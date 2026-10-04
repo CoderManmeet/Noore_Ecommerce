@@ -3,6 +3,7 @@ from userauths import views as userauths_views
 from store import views as store_views
 from store import payment_views, owner_views
 from core.health import HealthView
+from core.jobs_api import RunJobsView
 from customer import views as customer_views
 from vendor import views as vendor_views
 
@@ -14,6 +15,9 @@ urlpatterns = [
 
     # Uptime check (see core/health.py)
     path('health/', HealthView.as_view(), name='health'),
+
+    # Runs one batch of background jobs; off unless JOBS_RUN_TOKEN is set (see core/jobs_api.py)
+    path('jobs/run/', RunJobsView.as_view(), name='jobs-run'),
 
     # Userauths API Endpoints
     path('user/token/', userauths_views.MyTokenObtainPairView.as_view(), name='token_obtain_pair'),

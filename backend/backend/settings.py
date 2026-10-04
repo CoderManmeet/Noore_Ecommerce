@@ -32,7 +32,15 @@ SECRET_KEY = env.str("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
+
+# Render (and most hosts) give the service its own public hostname at run time. Adding it
+# automatically means one less value to copy by hand, and a rename cannot lock you out.
+RENDER_EXTERNAL_HOSTNAME = env.str("RENDER_EXTERNAL_HOSTNAME", default="")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["http://127.0.0.1:8000", "http://localhost:8000"])
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 
 
@@ -74,6 +82,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves the admin's own CSS and JavaScript straight from Django. Needed on hosts where
+    # nothing else serves /static/ (Render, Railway); harmless behind Caddy or nginx.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     # Add Cors Middle ware here
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -161,6 +172,34 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Uploaded product photos.
+#
+#   CLOUDINARY_URL set   -> Cloudinary (a free account is enough for a small catalogue)
+#   not set              -> this machine's own media/ folder, as in development
+#
+# A host with no persistent disk (Render's free tier, for example) wipes uploads on every
+# deploy and every restart, so a store running there MUST have CLOUDINARY_URL set or its
+# product photos will disappear. Nothing else in the project changes: Django keeps writing to
+# `ImageField`s exactly as before.
+CLOUDINARY_URL = env.str("CLOUDINARY_URL", default="")
+USE_CLOUDINARY = bool(CLOUDINARY_URL)
+if USE_CLOUDINARY:
+    INSTALLED_APPS = INSTALLED_APPS + ["cloudinary", "cloudinary_storage"]
+    CLOUDINARY_STORAGE = {"SECURE": True}
+
+# Static files are served by WhiteNoise, compressed and fingerprinted so they can be cached.
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage" if USE_CLOUDINARY
+        else "django.core.files.storage.FileSystemStorage"
+    },
+    # Compressed, but NOT fingerprinted: one of the admin theme's stylesheets points at a
+    # source-map file it does not ship, and the fingerprinting storage treats that as fatal.
+    # Compression alone is what matters here; the cache headers come from the host.
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+WHITENOISE_AUTOREFRESH = DEBUG
 
 
 # AWS Configs
@@ -250,6 +289,16 @@ STRIKETHROUGH_REQUIRES_PRICE_HISTORY = env.bool("STRIKETHROUGH_REQUIRES_PRICE_HI
 PRICE_HISTORY_WINDOW_DAYS = env.int("PRICE_HISTORY_WINDOW_DAYS", default=30)
 # "Only N left" is shown when the real available quantity is at or below this number.
 LOW_STOCK_THRESHOLD = env.int("LOW_STOCK_THRESHOLD", default=5)
+
+# Running background jobs over HTTP.
+#
+# Order emails, payment reconciliation and checkout expiry normally run in `manage.py
+# run_worker`. Hosting that cannot run a second process (free tiers) can instead call
+#   POST /api/v1/jobs/run/   with header  X-Jobs-Token: <this value>
+# from any scheduler (a GitHub Actions workflow, cron-job.org, Windows Task Scheduler).
+# Blank (the default) disables the endpoint completely: it answers 404 as if it did not exist.
+JOBS_RUN_TOKEN = env.str("JOBS_RUN_TOKEN", default="")
+JOBS_RUN_BATCH = env.int("JOBS_RUN_BATCH", default=50)
 
 # Orders
 # An unpaid order draft older than this is expired by the worker: its stock holds and its

@@ -267,3 +267,64 @@ def test_sign_in_token_says_whether_the_user_is_staff_and_the_api_does_not_trust
     # A customer cannot reach an owner endpoint whatever their browser claims.
     assert auth(customer).get(f"{API}owner/orders/").status_code == 403
     assert auth(staff).get(f"{API}owner/orders/").status_code == 200
+
+
+# --------------------------------------------------------------------------- free hosting
+
+@pytest.mark.django_db
+def test_background_jobs_can_be_run_over_http_with_the_right_token(api, settings, mailoutbox, vendor, config_settings):
+    """Hosting with no second process schedules this endpoint instead of running the worker."""
+    from core.models import Job
+    from store.emails import queue_order_email
+    from store.models import CartOrder
+
+    settings.JOBS_RUN_TOKEN = "a-long-random-token-for-this-test"
+    order = CartOrder.objects.create(full_name="Asha", email="asha@example.com", mobile="9876543210",
+                                     payment_status="pending", payment_method="COD")
+    queue_order_email(order, "placed")
+    assert Job.objects.filter(status=Job.STATUS_PENDING).count() == 1
+
+    url = f"{API}jobs/run/"
+    # No token, a wrong token and a near-miss all look like a page that does not exist.
+    assert api.post(url).status_code == 404
+    assert api.post(url, **{"HTTP_X_JOBS_TOKEN": "wrong"}).status_code == 404
+    assert api.post(url, **{"HTTP_X_JOBS_TOKEN": settings.JOBS_RUN_TOKEN[:-1]}).status_code == 404
+    assert Job.objects.filter(status=Job.STATUS_PENDING).count() == 1
+    assert mailoutbox == []
+
+    response = api.post(url, **{"HTTP_X_JOBS_TOKEN": settings.JOBS_RUN_TOKEN})
+    assert response.status_code == 200 and response.json()["ran"] >= 1
+    assert len(mailoutbox) == 1 and mailoutbox[0].to == ["asha@example.com"]
+
+    # Running it again is harmless: the work is already done.
+    assert api.post(url, **{"HTTP_X_JOBS_TOKEN": settings.JOBS_RUN_TOKEN}).json()["failed"] == 0
+    assert len(mailoutbox) == 1
+
+
+@pytest.mark.django_db
+def test_the_jobs_endpoint_is_off_unless_a_token_is_configured(api, settings):
+    settings.JOBS_RUN_TOKEN = ""
+    for headers in ({}, {"HTTP_X_JOBS_TOKEN": ""}, {"HTTP_X_JOBS_TOKEN": "anything"}):
+        assert api.post(f"{API}jobs/run/", **headers).status_code == 404
+
+
+def test_uploads_go_to_cloudinary_when_it_is_configured_and_to_disk_when_it_is_not():
+    """A host with no disk keeps its product photos only if CLOUDINARY_URL is set."""
+    cloud = production_settings("STORAGES", "USE_CLOUDINARY", "INSTALLED_APPS",
+                                CLOUDINARY_URL="cloudinary://1:2@example-cloud")
+    assert cloud["USE_CLOUDINARY"] is True
+    assert cloud["STORAGES"]["default"]["BACKEND"] == "cloudinary_storage.storage.MediaCloudinaryStorage"
+    assert "cloudinary_storage" in cloud["INSTALLED_APPS"]
+
+    local = production_settings("STORAGES", "USE_CLOUDINARY", CLOUDINARY_URL="")
+    assert local["USE_CLOUDINARY"] is False
+    assert local["STORAGES"]["default"]["BACKEND"] == "django.core.files.storage.FileSystemStorage"
+    # Either way the admin's own CSS is served by the app itself.
+    assert local["STORAGES"]["staticfiles"]["BACKEND"].startswith("whitenoise.storage.")
+
+
+def test_the_platform_hostname_is_trusted_automatically():
+    values = production_settings("ALLOWED_HOSTS", "CSRF_TRUSTED_ORIGINS",
+                                 RENDER_EXTERNAL_HOSTNAME="noore-api.onrender.com")
+    assert "noore-api.onrender.com" in values["ALLOWED_HOSTS"]
+    assert "https://noore-api.onrender.com" in values["CSRF_TRUSTED_ORIGINS"]

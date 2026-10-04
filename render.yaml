@@ -1,0 +1,55 @@
+# Render Blueprint: the Noore backend on the free tier.
+#
+# In Render: New > Blueprint, point it at this repository, and it creates the service with
+# these settings. The values marked sync:false are the ones you type into the dashboard once;
+# they are never stored in this file, so no secret is committed.
+#
+# The database is NOT defined here on purpose: Render's own free Postgres is deleted 30 days
+# after it is created. Use a free Neon database instead and paste its connection string into
+# DATABASE_URL. See docs/DEPLOY-FREE.md.
+services:
+  - type: web
+    name: noore-api
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60"
+    healthCheckPath: /api/v1/health/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true          # Render makes a strong random value
+      - key: JOBS_RUN_TOKEN
+        generateValue: true          # the scheduler sends this to run background jobs
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_CACHE
+        value: "db"
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+      - key: ENABLED_PAYMENT_PROVIDERS
+        value: "razorpay,cod"
+      - key: STORE_NAME
+        value: "Noore Candles"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      # --- you paste these in the dashboard ------------------------------------------------
+      - key: DATABASE_URL                 # from Neon
+        sync: false
+      - key: CLOUDINARY_URL               # from Cloudinary; without it, uploaded photos vanish
+        sync: false
+      - key: SITE_URL                     # your Vercel address, e.g. https://noore.vercel.app
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS         # the same Vercel address
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS         # the same Vercel address
+        sync: false
+      - key: RAZORPAY_KEY_ID              # test keys are fine for a showcase; blank = COD only
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false

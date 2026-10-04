@@ -1,0 +1,40 @@
+# Runs the store's background jobs every 15 minutes, for hosting that cannot run a second
+# process (Render's free tier). It sends one HTTPS request; GitHub Actions minutes for public
+# repositories are free.
+#
+# What it drives: order emails, Razorpay payment reconciliation, abandoned-checkout expiry,
+# stock-hold expiry and review-request emails.
+#
+# Set these two repository secrets (Settings > Secrets and variables > Actions):
+#   API_BASE_URL    https://your-service.onrender.com
+#   JOBS_RUN_TOKEN  the value Render generated for JOBS_RUN_TOKEN
+name: Run store background jobs
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the jobs endpoint
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          JOBS_RUN_TOKEN: ${{ secrets.JOBS_RUN_TOKEN }}
+        run: |
+          if [ -z "$API_BASE_URL" ] || [ -z "$JOBS_RUN_TOKEN" ]; then
+            echo "API_BASE_URL and JOBS_RUN_TOKEN repository secrets are not set." >&2
+            exit 1
+          fi
+          # --max-time is generous: a free service may be asleep and take ~50s to wake up.
+          code=$(curl -sS -o /tmp/out.json -w '%{http_code}' --max-time 120 --retry 2 --retry-delay 20 \
+                 -X POST "${API_BASE_URL%/}/api/v1/jobs/run/" \
+                 -H "X-Jobs-Token: $JOBS_RUN_TOKEN")
+          echo "HTTP $code"; cat /tmp/out.json; echo
+          if [ "$code" = "404" ]; then
+            echo "The token was refused, or JOBS_RUN_TOKEN is not set on the server." >&2
+            exit 1
+          fi
+          [ "$code" = "200" ]
