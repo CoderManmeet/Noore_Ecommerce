@@ -328,3 +328,32 @@ def test_the_platform_hostname_is_trusted_automatically():
                                  RENDER_EXTERNAL_HOSTNAME="noore-api.onrender.com")
     assert "noore-api.onrender.com" in values["ALLOWED_HOSTS"]
     assert "https://noore-api.onrender.com" in values["CSRF_TRUSTED_ORIGINS"]
+
+
+@pytest.mark.django_db
+def test_claim_shop_creates_the_shop_on_an_empty_database(settings):
+    """A fresh deployment has no shop: the first claim makes one instead of sending you to a form."""
+    from django.core.management import call_command
+    from django.core.management.base import CommandError
+
+    from userauths.models import User
+    from vendor.models import Vendor
+
+    settings.STORE_NAME = "Noore Candles"
+    owner = User.objects.create_user(email="owner@example.com", username="owner", password="x")
+
+    # A non-staff account cannot own it, and nothing is created on the way to finding that out.
+    with pytest.raises(CommandError):
+        call_command("claim_shop", "--email", owner.email)
+    assert Vendor.objects.count() == 0
+
+    owner.is_staff = True
+    owner.save()
+    call_command("claim_shop", "--email", owner.email)
+
+    shop = Vendor.objects.get()
+    assert (shop.name, shop.user_id, shop.active) == ("Noore Candles", owner.pk, True)
+    assert shop.slug  # a usable address is generated
+
+    call_command("claim_shop", "--email", owner.email)  # running it again claims the same shop
+    assert Vendor.objects.count() == 1

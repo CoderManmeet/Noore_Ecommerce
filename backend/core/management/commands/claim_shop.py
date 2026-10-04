@@ -8,8 +8,13 @@ products, orders, coupons and reviews) that the seed data left attached to anoth
     python manage.py claim_shop --email you@example.com
     python manage.py claim_shop --email you@example.com --name "My Brand"
     python manage.py claim_shop --list
+
+On a brand-new database there is no shop yet, so the first run creates one. (Older versions of
+this command sent you to a "register your shop" form; that was a marketplace page and it no
+longer exists, because this store has exactly one shop.)
 """
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
@@ -61,7 +66,7 @@ class Command(BaseCommand):
                 "superuser with: python manage.py createsuperuser"
             )
 
-        shop = self._resolve_shop(options["shop_id"])
+        shop = self._resolve_shop(options["shop_id"], name=options["name"], owner=user)
 
         with transaction.atomic(), acting_as(user, label=f"user:{user.pk}"):
             previous_owner = shop.user
@@ -107,7 +112,7 @@ class Command(BaseCommand):
             )
         )
 
-    def _resolve_shop(self, shop_id):
+    def _resolve_shop(self, shop_id, name=None, owner=None):
         if shop_id is not None:
             try:
                 return Vendor.objects.get(pk=shop_id)
@@ -116,8 +121,15 @@ class Command(BaseCommand):
 
         shops = list(Vendor.objects.all())
         if not shops:
-            raise CommandError(
-                "There are no shops yet. Register one at /vendor/register/ on the storefront first."
+            # A brand-new database: create the one shop this store has.
+            shop_name = name or getattr(settings, "STORE_NAME", "") or "The Shop"
+            self.stdout.write(f"No shop existed yet, so one was created: '{shop_name}'")
+            return Vendor.objects.create(
+                name=shop_name,
+                email=(owner.email if owner is not None else ""),
+                description="",
+                active=True,
+                verified=True,
             )
         shops.sort(key=lambda s: Product.objects.filter(vendor=s).count(), reverse=True)
         return shops[0]
