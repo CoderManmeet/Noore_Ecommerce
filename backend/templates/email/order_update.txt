@@ -1,0 +1,25 @@
+{{ store_name }}
+
+Hello {{ order.full_name }},
+
+{{ intro }}
+{% for line in extra_lines %}
+{{ line }}{% endfor %}
+{% if action_url %}
+{{ action_label }}: {{ action_url }}
+{% endif %}{% if show_totals %}
+Order {{ order.oid }}
+{% for item in items %}- {{ item.title }}{% if item.variant %} ({{ item.variant }}){% endif %} x {{ item.qty }}: {{ item.amount }}
+{% endfor %}
+Subtotal: {{ subtotal }}{% if discount %}
+Discount{% if coupon_code %} ({{ coupon_code }}){% endif %}: -{{ discount }}{% endif %}
+Shipping: {{ shipping }}
+Total: {{ total }} (inclusive of all taxes){% if is_cod %}
+Payment: Cash on Delivery{% endif %}
+
+Delivering to:
+{{ order.full_name }}
+{{ order.address }}, {{ order.city }}, {{ order.state }} {{ order.pincode }}
+{% endif %}
+Thank you,
+{{ store_name }}

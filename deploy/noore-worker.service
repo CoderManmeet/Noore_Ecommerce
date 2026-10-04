@@ -1,0 +1,21 @@
+# systemd unit: the background worker (order emails, Razorpay reconcile, draft expiry,
+# stock-hold expiry, review requests). Restarts on failure and starts at boot.
+[Unit]
+Description=Noore store - background worker
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=noore
+Group=noore
+WorkingDirectory=/srv/noore/backend
+EnvironmentFile=/srv/noore/backend/.env
+ExecStart=/srv/noore/backend/venv/bin/python manage.py run_worker
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

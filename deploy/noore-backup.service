@@ -1,0 +1,11 @@
+# systemd unit: one backup run. Triggered nightly by noore-backup.timer.
+[Unit]
+Description=Noore store - nightly backup (database and media)
+
+[Service]
+Type=oneshot
+User=noore
+Group=noore
+EnvironmentFile=/srv/noore/backend/.env
+EnvironmentFile=-/srv/noore/deploy/backup.env
+ExecStart=/srv/noore/deploy/backup.sh

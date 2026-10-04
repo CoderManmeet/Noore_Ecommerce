@@ -1,0 +1,21 @@
+# systemd unit: the Django API under gunicorn. Restarts on failure and starts at boot.
+# Install:  sudo cp deploy/noore-web.service /etc/systemd/system/  (edit User and paths first)
+[Unit]
+Description=Noore store - web (gunicorn)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=noore
+Group=noore
+WorkingDirectory=/srv/noore/backend
+EnvironmentFile=/srv/noore/backend/.env
+ExecStart=/srv/noore/backend/venv/bin/gunicorn backend.wsgi:application --bind 127.0.0.1:8000 --workers 3 --timeout 60 --access-logfile - --error-logfile -
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

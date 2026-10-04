@@ -1,0 +1,200 @@
+/*
+ * Noore Candles theme: THE one place the storefront's look is defined.
+ *
+ * Change a colour or a typeface here and every storefront page follows; no component names a
+ * hex code or a font. The values come from the v0 "Noore" design.
+ *
+ *   bg-cream   page background            text-ink     main text, primary buttons
+ *   bg-sand    panels (order summary)     text-stone   secondary text
+ *   bg-linen   footer, soft blocks        text-clay    accent: labels, links, notices
+ *   border-line / border-line-strong      font-serif   headings      font-sans  everything else
+ *
+ * How this lives beside the owner dashboard, which is still Bootstrap:
+ *   - Bootstrap is no longer loaded globally. Only the dashboard and a few older account pages
+ *     load it (src/layouts/LegacyStyles.jsx), so it cannot restyle the storefront.
+ *   - Tailwind's reset stays in the "base" layer, where Bootstrap (when present) overrides it,
+ *     so those older pages keep their look.
+ *   - Tailwind's utilities are deliberately NOT in a layer, so a utility class always beats
+ *     Bootstrap's element rules on the shared header and footer.
+ */
+@layer theme, base, components;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@source "../";
+
+@theme {
+    --color-cream: #f6f2eb;
+    --color-sand: #eee9e1;
+    --color-linen: #e8e1d6;
+    --color-oat: #dcd3c4;
+    --color-ink: #292522;
+    --color-stone: #756f67;
+    --color-clay: #a66d54;
+    --color-line: rgb(41 37 34 / 0.15);
+    --color-line-strong: rgb(41 37 34 / 0.3);
+    --color-success: #4f6b4a;
+    --color-danger: #a4432f;
+
+    --font-serif: Georgia, "Times New Roman", serif;
+    --font-sans: Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        overflow-x: hidden;
+    }
+
+    button,
+    a {
+        cursor: pointer;
+    }
+
+    button:disabled {
+        cursor: not-allowed;
+    }
+
+    ::selection {
+        background: #c3a18c;
+        color: #25221f;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html {
+            scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+/*
+ * The storefront shell. On pages that still load Bootstrap, these rules (same specificity as
+ * Bootstrap's element rules, but later in the document) keep the shared header and footer
+ * looking like Noore. `:where()` keeps their specificity at element level so any utility class
+ * on the element still wins.
+ */
+:where(.noore-shell) {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+:where(.noore-chrome) :is(p, h1, h2, h3, h4, ul, ol, label) {
+    margin: 0;
+}
+
+:where(.noore-chrome) a {
+    color: inherit;
+    text-decoration: none;
+}
+
+:where(.noore-chrome) :is(button, input) {
+    font: inherit;
+    color: inherit;
+}
+
+/* Reusable pieces (kept tiny; everything else is utility classes in the components). */
+.noore-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-clay);
+}
+
+.noore-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.noore-input {
+    min-height: 3rem;
+    width: 100%;
+    border-bottom: 1px solid var(--color-line-strong);
+    background: transparent;
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.noore-input:focus {
+    border-bottom-color: var(--color-clay);
+}
+
+.noore-btn {
+    display: inline-flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: var(--color-ink);
+    padding: 0 1.5rem;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #fff;
+    transition: background-color 0.2s;
+}
+
+.noore-btn:hover:not(:disabled) {
+    background: var(--color-clay);
+}
+
+.noore-btn:disabled {
+    opacity: 0.5;
+}
+
+.noore-btn-outline {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid var(--color-line-strong);
+    padding: 0 1rem;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.noore-btn-outline:hover:not(:disabled) {
+    background: var(--color-ink);
+    color: #fff;
+}
+
+.noore-link {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+/* SweetAlert dialogs, matched to the theme. */
+.swal2-popup {
+    border-radius: 0 !important;
+    background: var(--color-cream) !important;
+    color: var(--color-ink) !important;
+    font-family: var(--font-sans) !important;
+}
+
+.swal2-title {
+    font-family: var(--font-serif) !important;
+    font-weight: 400 !important;
+}
+
+.swal2-styled.swal2-confirm {
+    border-radius: 0 !important;
+    background: var(--color-ink) !important;
+}
