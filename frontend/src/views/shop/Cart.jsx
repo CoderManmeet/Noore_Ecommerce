@@ -11,6 +11,7 @@ import { CartContext } from '../plugin/Context';
 import { Trash2 } from 'lucide-react';
 import { formatINR } from '../../utils/money';
 import { BackLink, Field, Photo } from '../ui/noore';
+import { SIZES } from '../../utils/image';
 import usePageTitle from '../../utils/usePageTitle';
 
 // The coupon typed in the cart is remembered for this browser so it survives a refresh and
@@ -205,7 +206,7 @@ function Cart() {
                                     return (
                                         <article className="flex gap-4 border-b border-line pb-6" key={c.id} data-testid="cart-line">
                                             <Link to={`/detail/${c?.product?.slug}`} className="block size-28 shrink-0 overflow-hidden bg-oat md:size-36">
-                                                {c?.product?.image && <Photo src={c.product.image} alt={c?.product?.title} className="size-full object-cover" />}
+                                                {c?.product?.image && <Photo src={c.product.image} alt={c?.product?.title} width={SIZES.thumb} className="size-full object-cover" />}
                                             </Link>
                                             <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
                                                 <div className="flex justify-between gap-3">

@@ -14,6 +14,7 @@ import { CartContext } from '../plugin/Context';
 import { Heart } from 'lucide-react';
 import { formatINR } from '../../utils/money';
 import { BackLink, Loading, Photo } from '../ui/noore';
+import { SIZES } from '../../utils/image';
 import usePageTitle from '../../utils/usePageTitle';
 
 // Product page.
@@ -189,14 +190,14 @@ function ProductDetail() {
                     {/* Gallery: one large photo, thumbnails beneath */}
                     <div>
                         <div className="aspect-[4/5] overflow-hidden bg-oat">
-                            {productImage && <Photo src={productImage} alt={product.title} className="size-full object-cover" />}
+                            {productImage && <Photo src={productImage} alt={product.title} width={SIZES.detail} className="size-full object-cover" />}
                         </div>
                         {images.length > 1 &&
                             <div className="mt-3 grid grid-cols-5 gap-3">
                                 {images.map((src, index) => (
                                     <button key={src} type="button" onClick={() => setProductImage(src)} aria-label={`Show photo ${index + 1}`}
                                         className={`aspect-square overflow-hidden border ${productImage === src ? 'border-ink' : 'border-transparent'}`}>
-                                        <Photo src={src} alt="" className="size-full object-cover" />
+                                        <Photo src={src} alt="" width={SIZES.thumb} className="size-full object-cover" />
                                     </button>
                                 ))}
                             </div>

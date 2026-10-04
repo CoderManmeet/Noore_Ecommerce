@@ -323,41 +323,64 @@ class Product(models.Model):
 
     # Calculates the discount percentage between old and new prices
     def get_precentage(self):
-        new_price = ((self.old_price - self.price) / self.old_price) * 100
-        return round(new_price, 0)
+        """
+        How far below the MRP this product is, as a whole percent.
+
+        A product with no MRP (or an MRP at or below the price) is not discounted, so the answer
+        is 0. Before this it divided by zero and took the whole listing page down with it.
+        """
+        old_price = self.old_price or 0
+        price = self.price or 0
+        if old_price <= 0 or old_price <= price:
+            return 0
+        return round(((old_price - price) / old_price) * 100, 0)
     
     # Average rating of the product. Only reviews the owner has approved count (Phase G4).
+    #
+    # A view that lists many products can work these three out for the whole page in one query
+    # (see store.views.CatalogueListMixin) and attach the answers as `_rating_avg`,
+    # `_rating_count` and `_order_count`; each method uses that when it is there. On its own a
+    # product still asks for its own numbers, so nothing else has to change.
     def product_rating(self):
-        product_rating = Review.objects.filter(product=self, status=REVIEW_APPROVED).aggregate(avg_rating=models.Avg('rating'))
-        return product_rating['avg_rating']
+        annotated = getattr(self, "_rating_avg", None)
+        if annotated is not None or hasattr(self, "_rating_avg"):
+            return annotated
+        return Review.objects.filter(product=self, status=REVIEW_APPROVED).aggregate(
+            avg_rating=models.Avg('rating'))['avg_rating']
     
     # Number of approved reviews for the product
     def rating_count(self):
-        rating_count = Review.objects.filter(product=self, status=REVIEW_APPROVED).count()
-        return rating_count
+        annotated = getattr(self, "_rating_count", None)
+        if annotated is not None:
+            return annotated
+        return Review.objects.filter(product=self, status=REVIEW_APPROVED).count()
     
     # Returns the count of orders for the product with "paid" payment status
     def order_count(self):
-        order_count = CartOrderItem.objects.filter(product=self, order__payment_status="paid").count()
-        return order_count
+        annotated = getattr(self, "_order_count", None)
+        if annotated is not None:
+            return annotated
+        return CartOrderItem.objects.filter(product=self, order__payment_status="paid").count()
 
     # Returns the gallery images linked to this product
+    # These four return the product's own rows. They go through the reverse relation (rather
+    # than a fresh query against the table) so that a view which has prefetched them serves a
+    # whole page without asking the database once per product.
     def gallery(self):
-        gallery = Gallery.objects.filter(product=self)
-        return gallery
+        return self.gallery_set.all()
     
     # def specification(self):
     #     return Specification.objects.filter(product=self)
 
     def specification(self):
-        return Specification.objects.filter(product=self)
+        return self.specification_set.all()
 
 
     def color(self):
-        return Color.objects.filter(product=self)
+        return self.color_set.all()
     
     def size(self):
-        return Size.objects.filter(product=self)
+        return self.size_set.all()
 
     # Returns a list of products frequently bought together with this product
     def frequently_bought_together(self):

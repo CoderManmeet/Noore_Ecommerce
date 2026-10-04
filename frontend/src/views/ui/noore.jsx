@@ -3,16 +3,20 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
 import { formatINR } from '../../utils/money';
+import { imageUrl, SIZES } from '../../utils/image';
 
 // Small shared pieces of the Noore storefront design.
 
 // A product photo. If the file is missing or fails to load, nothing is drawn (the coloured
 // block behind it remains), never the browser's broken-image icon.
-export function Photo({ src, alt = '', className = '', ...rest }) {
+export function Photo({ src, alt = '', className = '', width = SIZES.card, ...rest }) {
     const [failed, setFailed] = useState(false);
     useEffect(() => { setFailed(false); }, [src]);
     if (!src || failed) return null;
-    return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} {...rest} />;
+    // `width` is the widest this photo is ever drawn; Cloudinary then sends a file that size
+    // instead of the original upload. See src/utils/image.js.
+    return <img src={imageUrl(src, width)} alt={alt} className={className} loading="lazy" decoding="async"
+                onError={() => setFailed(true)} {...rest} />;
 }
 
 export function PageIntro({ eyebrow, title, children }) {
@@ -59,7 +63,7 @@ export function ProductCard({ product }) {
         <article className="group" data-testid="product-card">
             <Link to={`/detail/${product.slug}`} className="relative block overflow-hidden bg-oat">
                 <div className="aspect-[4/5]">
-                    {<Photo src={product.image} alt={product.title} loading="lazy" className="size-full object-cover transition-transform duration-700 group-hover:scale-105" />}
+                    {<Photo src={product.image} alt={product.title} width={SIZES.card} className="size-full object-cover transition-transform duration-700 group-hover:scale-105" />}
                 </div>
                 {soldOut && <span className="absolute left-3 top-3 bg-cream px-2 py-1 text-[9px] uppercase tracking-widest">Sold out</span>}
             </Link>

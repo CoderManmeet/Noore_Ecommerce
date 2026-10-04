@@ -7,6 +7,7 @@ import Addon from '../plugin/Addon';
 import { formatINR } from '../../utils/money';
 import { STORE_NAME } from '../../utils/constants';
 import { Loading, Photo, ProductCard } from '../ui/noore';
+import { SIZES } from '../../utils/image';
 
 // Home page (Noore design). Every product, price and photo shown here comes from the store's
 // own catalogue; nothing is hard-coded.
@@ -34,7 +35,7 @@ function Home() {
                         <Link to="/shop" className="noore-btn mt-9 w-fit">Explore the collection <ArrowRight className="size-4" aria-hidden="true" /></Link>
                     </div>
                     <div className="relative min-h-[380px] bg-linen md:min-h-[600px]">
-                        {hero?.image && <Photo src={hero.image} alt={hero.title} className="absolute inset-0 size-full object-cover" />}
+                        {hero?.image && <Photo src={hero.image} alt={hero.title} width={SIZES.hero} className="absolute inset-0 size-full object-cover" />}
                         {hero &&
                             <Link to={`/detail/${hero.slug}`} className="absolute bottom-8 right-8 bg-cream/90 px-4 py-3 text-right">
                                 <p className="text-[10px] uppercase tracking-[0.25em] text-stone">Featured</p>
@@ -65,7 +66,7 @@ function Home() {
 
             <section className="mx-auto grid max-w-[1440px] gap-12 px-5 py-16 md:grid-cols-2 md:items-center md:px-10 md:py-28">
                 <div className="relative aspect-square overflow-hidden bg-oat">
-                    {(collection[1] || hero)?.image && <Photo src={(collection[1] || hero).image} alt="" loading="lazy" className="size-full object-cover" />}
+                    {(collection[1] || hero)?.image && <Photo src={(collection[1] || hero).image} alt="" width={SIZES.detail} className="size-full object-cover" />}
                 </div>
                 <div className="max-w-lg md:pl-8">
                     <p className="noore-eyebrow mb-6">A slower way of living</p>

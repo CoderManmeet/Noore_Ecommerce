@@ -7,6 +7,7 @@ import { formatINR } from '../../utils/money';
 import { loadRazorpay } from '../../utils/razorpay';
 import { POLICY_LINKS } from '../policy/policies';
 import { Loading, PageIntro, Photo } from '../ui/noore';
+import { SIZES } from '../../utils/image';
 import usePageTitle from '../../utils/usePageTitle';
 
 // Checkout: review the order, choose how to pay, and pay.
@@ -176,7 +177,7 @@ function Checkout() {
               {(order.orderitem || []).map((item) => (
                 <div className="flex items-center gap-4" key={item.id} data-testid="checkout-line">
                   <div className="size-16 shrink-0 overflow-hidden bg-oat">
-                    {item.product?.image && <Photo src={item.product.image} alt="" className="size-full object-cover" />}
+                    {item.product?.image && <Photo src={item.product.image} alt="" width={SIZES.thumb} className="size-full object-cover" />}
                   </div>
                   <div className="flex-1">
                     <p className="font-serif text-xl">{item.product?.title}</p>

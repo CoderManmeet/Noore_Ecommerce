@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
+from django.db.models import Avg, Count, Prefetch, Q
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
@@ -132,15 +133,64 @@ class BrandListView(generics.ListAPIView):
     permission_classes = (AllowAny,)
 
 
-class FeaturedProductListView(generics.ListAPIView):
+class CatalogueListMixin:
+    """
+    Serialises a page of products without asking the database once per product.
+
+    Everything the cards need (variants, images, the shop) is fetched in a handful of queries,
+    and the stock of every variant on the page is read in two more and handed to the
+    serializers. Without this a page of eight products cost over two hundred round trips.
+    """
+
+    def get_queryset(self):
+        from catalog.models import ProductVariant
+
+        return (
+            Product.objects.filter(status="published")
+            .select_related("vendor", "vendor__user", "category")
+            .annotate(
+                _rating_avg=Avg("reviews__rating", filter=Q(reviews__status=REVIEW_APPROVED)),
+                _rating_count=Count("reviews", filter=Q(reviews__status=REVIEW_APPROVED), distinct=True),
+                _order_count=Count("order_item", filter=Q(order_item__order__payment_status="paid"), distinct=True),
+            )
+            .prefetch_related(
+                Prefetch("variants", queryset=ProductVariant.objects.filter(active=True)
+                         .order_by("-is_default", "price_paise", "id"), to_attr="_prefetched_active_variants"),
+                "gallery_set", "specification_set", "size_set", "color_set",
+            )
+        )
+
+    def get_serializer_context(self):
+        from inventory.services import available_qty_map
+
+        context = super().get_serializer_context()
+        page = getattr(self, "_page_for_context", None)
+        if page is not None:
+            variants = [variant for product in page for variant in getattr(product, "_prefetched_active_variants", [])]
+            context["available_qty_map"] = available_qty_map(variants)
+        return context
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        rows = list(page if page is not None else queryset)
+        self._page_for_context = rows
+        serializer = self.get_serializer(rows, many=True)
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
+
+class FeaturedProductListView(CatalogueListMixin, generics.ListAPIView):
     serializer_class = ProductSerializer
-    queryset = Product.objects.filter(status="published", featured=True)[:3]
     permission_classes = (AllowAny,)
 
+    def get_queryset(self):
+        return super().get_queryset().filter(featured=True)[:3]
 
-class ProductListView(generics.ListAPIView):
+
+class ProductListView(CatalogueListMixin, generics.ListAPIView):
     serializer_class = ProductSerializer
-    queryset = Product.objects.filter(status="published")
     permission_classes = (AllowAny,)
 
 
@@ -155,7 +205,13 @@ class ProductDetailView(generics.RetrieveAPIView):
     permission_classes = (AllowAny,)
 
     def get_object(self):
-        queryset = Product.objects.all()
+        from catalog.models import ProductVariant
+
+        queryset = Product.objects.select_related("vendor", "vendor__user", "category").prefetch_related(
+            Prefetch("variants", queryset=ProductVariant.objects.filter(active=True)
+                     .order_by("-is_default", "price_paise", "id"), to_attr="_prefetched_active_variants"),
+            "gallery_set", "specification_set", "size_set", "color_set",
+        )
         if not (self.request.user.is_authenticated and self.request.user.is_staff):
             queryset = queryset.filter(status="published")
         return get_object_or_404(queryset, slug=self.kwargs.get('slug'))
@@ -994,7 +1050,7 @@ class ReorderView(generics.GenericAPIView):
                          "cart_lines": Cart.objects.filter(cart_id=cart_id).count()})
 
 
-class SearchProductsAPIView(generics.ListAPIView):
+class SearchProductsAPIView(CatalogueListMixin, generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = (AllowAny,)
 
@@ -1002,4 +1058,4 @@ class SearchProductsAPIView(generics.ListAPIView):
         query = (self.request.GET.get('query') or '').strip()
         if not query:
             return Product.objects.none()
-        return Product.objects.filter(status="published", title__icontains=query[:100])
+        return super().get_queryset().filter(title__icontains=query[:100])

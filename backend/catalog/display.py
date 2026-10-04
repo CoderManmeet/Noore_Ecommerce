@@ -76,15 +76,19 @@ def strikethrough_for(variant, now=None):
     return {"compare_at_paise": compare_at, "percent_off": _percent_off(price, compare_at), "basis": basis}
 
 
-def stock_status(variant):
+def stock_status(variant, available=None):
     """
     {"state", "label", "left"} from the stock ledger.
 
     "Only N left" is used only when N is the real available quantity and is at or below
     LOW_STOCK_THRESHOLD; `left` is None otherwise, so the exact count is never used as a
     pressure tactic above the threshold.
+
+    `available` lets a caller that has already read the whole page's stock pass it in
+    (inventory.services.available_qty_map); the number means exactly the same thing.
     """
-    available = available_qty(variant)
+    if available is None:
+        available = available_qty(variant)
     if available <= 0:
         return {"state": SOLD_OUT, "label": "Sold out", "left": 0}
     if available <= settings.LOW_STOCK_THRESHOLD:

@@ -86,6 +86,32 @@ def available_qty(variant):
     return max(on_hand_qty(variant) - reserved_qty(variant), 0)
 
 
+def available_qty_map(variants):
+    """
+    `available_qty` for many variants in TWO queries instead of two per variant.
+
+    A listing page asks for the stock of every size of every product; one query each turns a
+    page into hundreds of round trips to the database. This asks once for the ledger totals and
+    once for the live holds, and returns {variant_id: units available}. The arithmetic is the
+    same as `available_qty`, so the two can never disagree.
+    """
+    ids = [variant.pk if hasattr(variant, "pk") else int(variant) for variant in variants]
+    if not ids:
+        return {}
+
+    on_hand = {
+        row["variant"]: row["total"] or 0
+        for row in StockMovement.objects.filter(variant_id__in=ids).values("variant").annotate(total=Sum("quantity"))
+    }
+    reserved = {
+        row["variant"]: row["total"] or 0
+        for row in StockReservation.objects.filter(
+            variant_id__in=ids, status=ReservationStatus.ACTIVE, expires_at__gt=timezone.now()
+        ).values("variant").annotate(total=Sum("quantity"))
+    }
+    return {pk: max(on_hand.get(pk, 0) - reserved.get(pk, 0), 0) for pk in ids}
+
+
 def min_shelf_life_cutoff():
     """Batches expiring on or before this date must not be auto-allocated."""
     days = settings.MIN_SHELF_LIFE_ON_DISPATCH_DAYS

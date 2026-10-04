@@ -7,6 +7,7 @@ import UserData from '../plugin/UserData';
 import { formatINR } from '../../utils/money';
 import usePageTitle from '../../utils/usePageTitle';
 import { Loading, PageIntro, Photo } from '../ui/noore';
+import { SIZES } from '../../utils/image';
 import NotFound from '../base/NotFound';
 import BuyAgainButton from './BuyAgainButton';
 import { orderStatusLabel } from './Orders';
@@ -76,7 +77,7 @@ function OrderDetail() {
                             {items.map((item) => (
                                 <div key={item.id} className="flex items-center gap-4">
                                     <Link to={`/detail/${item.product?.slug}`} className="block size-16 shrink-0 overflow-hidden bg-oat">
-                                        {item.product?.image && <Photo src={item.product.image} alt="" className="size-full object-cover" />}
+                                        {item.product?.image && <Photo src={item.product.image} alt="" width={SIZES.thumb} className="size-full object-cover" />}
                                     </Link>
                                     <div className="flex-1">
                                         <p className="font-serif text-xl"><Link to={`/detail/${item.product?.slug}`}>{item.product?.title}</Link></p>

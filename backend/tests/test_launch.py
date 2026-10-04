@@ -357,3 +357,85 @@ def test_claim_shop_creates_the_shop_on_an_empty_database(settings):
 
     call_command("claim_shop", "--email", owner.email)  # running it again claims the same shop
     assert Vendor.objects.count() == 1
+
+
+# --------------------------------------------------------------------------- page speed
+
+@pytest.mark.django_db
+def test_a_listing_page_costs_the_same_few_queries_however_many_products_there_are(api, vendor, config_settings):
+    """
+    Every query is a round trip to the database, which on hosted Postgres is tens of
+    milliseconds. Asking once per product (or worse, once per size) is what made the shop
+    take seconds to load, so this pins the behaviour down.
+    """
+    from decimal import Decimal
+
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    from catalog.models import ProductVariant
+    from inventory.models import Batch
+    from inventory.services import receive_production
+    from store.models import Product
+
+    def make(count):
+        for i in range(count):
+            product = Product.objects.create(title=f"Candle {Product.objects.count()}-{i}", price=Decimal("499.00"),
+                                             old_price=Decimal("599.00"), stock_qty=0, status="published",
+                                             vendor=vendor, featured=True)
+            variants = [ProductVariant.objects.get(product=product, is_default=True)]
+            for size, price in (("200 g", 79900), ("300 g", 119900)):
+                variants.append(ProductVariant.objects.create(
+                    product=product, sku=f"SKU-{ProductVariant.objects.count()}", name=size,
+                    options={"Size": size}, price_paise=price))
+            for variant in variants:
+                batch = Batch.objects.create(batch_code=f"B-{variant.sku}", variant=variant,
+                                             manufactured_on=timezone.localdate(), quantity_produced=20,
+                                             cost_per_unit_paise=0)
+                receive_production(variant, batch, 20)
+
+    def queries_for(url):
+        api.get(url)  # warm anything cached per process
+        with CaptureQueriesContext(connection) as ctx:
+            response = api.get(url)
+        assert response.status_code == 200
+        return len(ctx.captured_queries), response.json()
+
+    make(2)
+    few, body = queries_for(f"{API}products/")
+    assert len(body) == 2
+    make(10)
+    many, body = queries_for(f"{API}products/")
+    assert len(body) == 12
+
+    # Five times the products, the same handful of queries.
+    assert many == few
+    assert many <= 12, f"{many} queries for 12 products"
+
+    detail, _ = queries_for(f"{API}products/{Product.objects.first().slug}/")
+    assert detail <= 15
+    search, _ = queries_for(f"{API}search/?query=Candle")
+    assert search == few
+    featured, _ = queries_for(f"{API}featured-products/")
+    assert featured <= few
+
+
+@pytest.mark.django_db
+def test_a_product_with_no_mrp_does_not_break_the_shop(api, vendor, config_settings):
+    """A product saved with the Regular Price box left empty used to take the whole page down."""
+    from decimal import Decimal
+
+    from store.models import Product
+
+    no_mrp = Product.objects.create(title="No MRP", price=Decimal("499.00"), stock_qty=0,
+                                    status="published", vendor=vendor)
+    assert no_mrp.get_precentage() == 0
+
+    equal = Product.objects.create(title="MRP equals price", price=Decimal("499.00"),
+                                   old_price=Decimal("499.00"), status="published", vendor=vendor)
+    assert equal.get_precentage() == 0
+
+    listing = api.get(f"{API}products/")
+    assert listing.status_code == 200
+    assert {"No MRP", "MRP equals price"} <= {row["title"] for row in listing.json()}
+    assert api.get(f"{API}products/{no_mrp.slug}/").status_code == 200

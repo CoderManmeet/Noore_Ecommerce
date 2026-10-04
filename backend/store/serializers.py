@@ -69,7 +69,9 @@ class ColorSerializer(SafeDepthModelSerializer):
 class ProductVariantSerializer(SafeDepthModelSerializer):
     """Public view of a sellable unit, including live availability from the stock ledger."""
 
-    available_qty = serializers.IntegerField(read_only=True)
+    # Read from the page's shared stock map when there is one, so a listing does not ask the
+    # ledger twice per size. The number is the same either way.
+    available_qty = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
     mrp = serializers.SerializerMethodField()
     best_before = serializers.SerializerMethodField()
@@ -85,10 +87,21 @@ class ProductVariantSerializer(SafeDepthModelSerializer):
                   "strikethrough", "best_before"]
         read_only_fields = fields
 
+    def get_available_qty(self, obj):
+        from inventory.services import available_qty
+
+        shared = self.context.get("available_qty_map")
+        if shared is not None and obj.pk in shared:
+            return shared[obj.pk]
+        return available_qty(obj)
+
     def get_stock(self, obj):
         from catalog.display import stock_status
 
-        return stock_status(obj)
+        # On a listing the whole page's stock is read in one go and passed down in the context,
+        # so this costs no query. On its own it falls back to asking for this variant alone.
+        available = (self.context.get("available_qty_map") or {}).get(obj.pk)
+        return stock_status(obj, available=available)
 
     def get_strikethrough(self, obj):
         from catalog.display import strikethrough_for
@@ -198,6 +211,11 @@ class ProductSerializer(SafeDepthModelSerializer):
             self.Meta.depth = 3
 
     def _active_variants(self, obj):
+        # The list and detail views prefetch these, so serialising a whole page costs no extra
+        # query. Anything else falls back to fetching them here.
+        prefetched = getattr(obj, "_prefetched_active_variants", None)
+        if prefetched is not None:
+            return prefetched
         cached = getattr(obj, "_active_variants_cache", None)
         if cached is None:
             cached = list(obj.variants.filter(active=True).order_by("-is_default", "price_paise", "id"))
@@ -205,12 +223,32 @@ class ProductSerializer(SafeDepthModelSerializer):
         return cached
 
     def get_variants(self, obj):
-        return ProductVariantSerializer(self._active_variants(obj), many=True, context=self.context).data
+        context = dict(self.context)
+        context["available_qty_map"] = self._available_map(obj)
+        return ProductVariantSerializer(self._active_variants(obj), many=True, context=context).data
 
     def get_available_qty(self, obj):
-        from inventory.services import available_qty
+        available = self._available_map(obj)
+        return sum(available.get(variant.pk, 0) for variant in self._active_variants(obj))
 
-        return sum(available_qty(variant) for variant in self._active_variants(obj))
+    def _available_map(self, obj):
+        """
+        Stock for every variant on this page, read once.
+
+        `ProductListView` puts the whole page's map in the context. A single product serialised
+        on its own builds the map for its own variants, still in two queries rather than two
+        per size.
+        """
+        from inventory.services import available_qty_map
+
+        shared = self.context.get("available_qty_map")
+        if shared is not None:
+            return shared
+        cached = getattr(obj, "_available_qty_cache", None)
+        if cached is None:
+            cached = available_qty_map(self._active_variants(obj))
+            obj._available_qty_cache = cached
+        return cached
 
     def get_price_from_paise(self, obj):
         prices = [variant.price_paise for variant in self._active_variants(obj)]

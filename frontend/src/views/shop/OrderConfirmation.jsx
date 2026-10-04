@@ -5,6 +5,7 @@ import apiInstance from '../../utils/axios';
 import UserData from '../plugin/UserData';
 import { formatINR } from '../../utils/money';
 import { Loading, Photo } from '../ui/noore';
+import { SIZES } from '../../utils/image';
 import usePageTitle from '../../utils/usePageTitle';
 
 // Shown after checkout.
@@ -132,7 +133,7 @@ function OrderConfirmation() {
                     {(order.orderitem || []).map((item) => (
                         <div className="flex items-center gap-4" key={item.id}>
                             <div className="size-16 shrink-0 overflow-hidden bg-oat">
-                                {item.product?.image && <Photo src={item.product.image} alt="" className="size-full object-cover" />}
+                                {item.product?.image && <Photo src={item.product.image} alt="" width={SIZES.thumb} className="size-full object-cover" />}
                             </div>
                             <div className="flex-1">
                                 <p className="font-serif text-xl">{item.product?.title}</p>
