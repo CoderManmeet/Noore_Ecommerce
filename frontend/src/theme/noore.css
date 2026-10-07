@@ -107,78 +107,86 @@
     color: inherit;
 }
 
-/* Reusable pieces (kept tiny; everything else is utility classes in the components). */
-.noore-eyebrow {
-    font-size: 10px;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: var(--color-clay);
-}
+/*
+ * Reusable pieces (kept tiny; everything else is utility classes in the components).
+ *
+ * These sit in the `components` layer, which the layer order above puts BELOW Tailwind's
+ * utilities. That matters: without it, `.noore-btn-outline { display: inline-flex }` beat
+ * `md:hidden`, and a button meant to disappear on desktop stayed on screen.
+ */
+@layer components {
+    .noore-eyebrow {
+        font-size: 10px;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: var(--color-clay);
+    }
 
-.noore-label {
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-}
+    .noore-label {
+        font-size: 10px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+    }
 
-.noore-input {
-    min-height: 3rem;
-    width: 100%;
-    border-bottom: 1px solid var(--color-line-strong);
-    background: transparent;
-    font-size: 0.95rem;
-    outline: none;
-}
+    .noore-input {
+        min-height: 3rem;
+        width: 100%;
+        border-bottom: 1px solid var(--color-line-strong);
+        background: transparent;
+        font-size: 0.95rem;
+        outline: none;
+    }
 
-.noore-input:focus {
-    border-bottom-color: var(--color-clay);
-}
+    .noore-input:focus {
+        border-bottom-color: var(--color-clay);
+    }
 
-.noore-btn {
-    display: inline-flex;
-    min-height: 3rem;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    background: var(--color-ink);
-    padding: 0 1.5rem;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: #fff;
-    transition: background-color 0.2s;
-}
+    .noore-btn {
+        display: inline-flex;
+        min-height: 3rem;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        background: var(--color-ink);
+        padding: 0 1.5rem;
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #fff;
+        transition: background-color 0.2s;
+    }
 
-.noore-btn:hover:not(:disabled) {
-    background: var(--color-clay);
-}
+    .noore-btn:hover:not(:disabled) {
+        background: var(--color-clay);
+    }
 
-.noore-btn:disabled {
-    opacity: 0.5;
-}
+    .noore-btn:disabled {
+        opacity: 0.5;
+    }
 
-.noore-btn-outline {
-    display: inline-flex;
-    min-height: 2.75rem;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    border: 1px solid var(--color-line-strong);
-    padding: 0 1rem;
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    transition: background-color 0.2s, color 0.2s;
-}
+    .noore-btn-outline {
+        display: inline-flex;
+        min-height: 2.75rem;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border: 1px solid var(--color-line-strong);
+        padding: 0 1rem;
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        transition: background-color 0.2s, color 0.2s;
+    }
 
-.noore-btn-outline:hover:not(:disabled) {
-    background: var(--color-ink);
-    color: #fff;
-}
+    .noore-btn-outline:hover:not(:disabled) {
+        background: var(--color-ink);
+        color: #fff;
+    }
 
-.noore-link {
-    text-decoration: underline;
-    text-underline-offset: 4px;
+    .noore-link {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+    }
 }
 
 /* SweetAlert dialogs, matched to the theme. */
@@ -197,4 +205,29 @@
 .swal2-styled.swal2-confirm {
     border-radius: 0 !important;
     background: var(--color-ink) !important;
+}
+
+/* The swipeable product row. A thin scrollbar on desktop, the system one on touch devices. */
+.noore-rail {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+    scroll-padding-left: 1.25rem;
+    overscroll-behavior-x: contain;
+}
+
+.noore-rail::-webkit-scrollbar {
+    height: 6px;
+}
+
+.noore-rail::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.noore-rail::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+}
+
+.noore-rail:focus-visible {
+    outline: 2px solid var(--color-clay);
+    outline-offset: 4px;
 }

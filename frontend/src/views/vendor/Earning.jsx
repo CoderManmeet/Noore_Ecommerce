@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom';
+// "chart.js/auto" registers the pieces a chart needs (scales, elements, tooltips). Without it
+// the chart throws "category is not a registered scale" and takes this whole screen down with
+// it, leaving a blank page. The Dashboard screen already imports it this way.
+import "chart.js/auto";
 import { Line } from "react-chartjs-2";
 
 import apiInstance from '../../utils/axios';

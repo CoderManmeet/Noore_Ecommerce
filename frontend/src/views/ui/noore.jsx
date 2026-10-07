@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 import { formatINR } from '../../utils/money';
 import { imageUrl, SIZES } from '../../utils/image';
@@ -55,12 +55,88 @@ export function Loading({ children = 'Loading...' }) {
 }
 
 // One product on a listing: photo at a fixed 4:5 ratio, name, "From" price, sold-out mark.
-export function ProductCard({ product }) {
+// A horizontal row of product cards that the shopper swipes or drags through, with arrows on
+// larger screens. Used on the home page, where "the collection" is a row rather than a grid.
+//
+// It is a plain scrolling list, so a touch swipe, a trackpad, Tab through the cards and a
+// screen reader all work without any of this code running. The arrows are an extra on top, and
+// are hidden when there is nothing to scroll.
+export function ProductRail({ children, label = 'Products' }) {
+    const rail = useRef(null);
+    const [atStart, setAtStart] = useState(true);
+    const [atEnd, setAtEnd] = useState(true);
+
+    const measure = () => {
+        const node = rail.current;
+        if (!node) return;
+        const max = node.scrollWidth - node.clientWidth;
+        setAtStart(node.scrollLeft <= 1);
+        setAtEnd(node.scrollLeft >= max - 1);
+    };
+
+    useEffect(() => {
+        const node = rail.current;
+        if (!node) return undefined;
+        measure();
+        node.addEventListener('scroll', measure, { passive: true });
+        window.addEventListener('resize', measure);
+        // Cards arrive with the data, and photos change the width as they load.
+        const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+        if (observer) observer.observe(node);
+        return () => {
+            node.removeEventListener('scroll', measure);
+            window.removeEventListener('resize', measure);
+            if (observer) observer.disconnect();
+        };
+    }, [children]);
+
+    // Move by one card, whatever the screen size.
+    const nudge = (direction) => {
+        const node = rail.current;
+        if (!node) return;
+        const card = node.firstElementChild;
+        const step = card ? card.getBoundingClientRect().width + 16 : node.clientWidth * 0.8;
+        node.scrollBy({ left: direction * step, behavior: 'smooth' });
+    };
+
+    const arrow = 'flex size-10 items-center justify-center border border-line-strong bg-cream transition-opacity disabled:pointer-events-none disabled:opacity-0';
+    const hasOverflow = !(atStart && atEnd);
+
+    return (
+        <div className="relative">
+            <div
+                ref={rail}
+                role="region"
+                aria-label={label}
+                tabIndex={0}
+                data-testid="product-rail"
+                className="noore-rail -mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2 md:mx-0 md:px-0"
+            >
+                {children}
+            </div>
+            {hasOverflow &&
+                <div className="pointer-events-none absolute inset-y-0 left-0 right-0 hidden items-center justify-between md:flex">
+                    <button type="button" aria-label="Previous candles" onClick={() => nudge(-1)} disabled={atStart}
+                        className={`${arrow} pointer-events-auto -ml-5`} data-testid="rail-prev">
+                        <ArrowLeft className="size-4" aria-hidden="true" />
+                    </button>
+                    <button type="button" aria-label="More candles" onClick={() => nudge(1)} disabled={atEnd}
+                        className={`${arrow} pointer-events-auto -mr-5`} data-testid="rail-next">
+                        <ArrowRight className="size-4" aria-hidden="true" />
+                    </button>
+                </div>
+            }
+        </div>
+    );
+}
+
+
+export function ProductCard({ product, inRail = false }) {
     const variants = product.variants || [];
     const soldOut = product.available_qty === 0;
     const strike = variants.find((variant) => variant.is_default)?.strikethrough;
     return (
-        <article className="group" data-testid="product-card">
+        <article className={`group ${inRail ? 'w-[72vw] shrink-0 snap-start sm:w-[46vw] lg:w-[23rem]' : ''}`} data-testid="product-card">
             <Link to={`/detail/${product.slug}`} className="relative block overflow-hidden bg-oat">
                 <div className="aspect-[4/5]">
                     {<Photo src={product.image} alt={product.title} width={SIZES.card} className="size-full object-cover transition-transform duration-700 group-hover:scale-105" />}

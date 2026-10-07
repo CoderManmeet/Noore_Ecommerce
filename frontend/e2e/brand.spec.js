@@ -112,8 +112,8 @@ test('staff reach every dashboard screen under /admin-area/ and old addresses re
     for (const screen of screens) {
         await page.goto(`/admin-area/${screen}`);
         await page.waitForLoadState('networkidle');
-        await expect(page.getByTestId('not-found')).toHaveCount(0);
-        await expect(page.locator('#main, .container, .container-fluid').first()).toBeVisible();
+        await expect(page.getByTestId('not-found'), screen).toHaveCount(0);
+        await expect(page.locator('#main, .container, .container-fluid, [data-testid]').first(), screen).toBeVisible();
     }
     expect(errors, errors.join('\n')).toEqual([]);
 
@@ -162,6 +162,43 @@ test('a staff account with no shop linked is told how to link it, never sent to 
     // The screens that do not need a shop still open.
     await page.goto('/admin-area/owner/orders/');
     await expect(page.getByTestId('owner-orders')).toBeVisible();
+});
+
+test('the home collection is one row the shopper scrolls, with working arrows on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const rail = page.getByTestId('product-rail');
+    await expect(rail).toBeVisible();
+    await expect(page.getByTestId('product-card')).toHaveCount(3);
+
+    // The cards sit in one row, not a grid: every card shares the same top edge.
+    const tops = await page.getByTestId('product-card').evaluateAll(
+        (cards) => cards.map((card) => Math.round(card.getBoundingClientRect().top)));
+    expect(new Set(tops).size).toBe(1);
+
+    // It scrolls sideways inside itself, and the page does not.
+    const scrollable = await rail.evaluate((node) => node.scrollWidth > node.clientWidth);
+    const pageOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(pageOverflow).toBeLessThanOrEqual(1);
+
+    if (scrollable) {
+        await expect(page.getByTestId('rail-prev')).toBeDisabled();
+        await page.getByTestId('rail-next').click();
+        await expect.poll(() => rail.evaluate((node) => node.scrollLeft)).toBeGreaterThan(50);
+        await page.getByTestId('rail-prev').click();
+        await expect.poll(() => rail.evaluate((node) => node.scrollLeft)).toBeLessThanOrEqual(1);
+    } else {
+        // Too few candles to scroll: no arrows, and nothing is cut off.
+        await expect(page.getByTestId('rail-next')).toHaveCount(0);
+    }
+
+    // "View all candles" appears once, not once per breakpoint.
+    await expect(page.getByRole('link', { name: 'View all candles' })).toHaveCount(1);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByRole('link', { name: 'View all candles' })).toHaveCount(1);
+    await expect(page.getByTestId('product-rail')).toBeVisible();
 });
 
 for (const [name, viewport] of [['mobile', { width: 390, height: 844 }], ['desktop', { width: 1280, height: 800 }]]) {

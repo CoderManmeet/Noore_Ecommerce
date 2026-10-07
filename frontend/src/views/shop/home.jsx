@@ -6,7 +6,7 @@ import apiInstance from '../../utils/axios';
 import Addon from '../plugin/Addon';
 import { formatINR } from '../../utils/money';
 import { STORE_NAME } from '../../utils/constants';
-import { Loading, Photo, ProductCard } from '../ui/noore';
+import { Loading, Photo, ProductCard, ProductRail } from '../ui/noore';
 import { SIZES } from '../../utils/image';
 
 // Home page (Noore design). Every product, price and photo shown here comes from the store's
@@ -57,8 +57,12 @@ function Home() {
                     </div>
                     {products === null && <Loading />}
                     {products !== null && collection.length === 0 && <p className="py-20 text-center font-serif text-2xl">The collection is being prepared.</p>}
-                    <div className="mt-12 grid gap-x-4 gap-y-12 sm:grid-cols-2 lg:grid-cols-4" data-testid="home-products">
-                        {collection.map((product) => <ProductCard key={product.id} product={product} />)}
+                    {/* One row the shopper swipes through, rather than a grid: the whole
+                        collection stays on one screen and the rest is an invitation to scroll. */}
+                    <div className="mt-12" data-testid="home-products">
+                        <ProductRail label="The collection">
+                            {collection.map((product) => <ProductCard key={product.id} product={product} inRail />)}
+                        </ProductRail>
                     </div>
                     <Link to="/shop" className="noore-btn-outline mt-10 w-full md:hidden">View all candles</Link>
                 </div>
