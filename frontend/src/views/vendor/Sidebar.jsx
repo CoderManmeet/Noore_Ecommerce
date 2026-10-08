@@ -1,116 +1,73 @@
-import React from 'react'
 import { Link, useLocation } from 'react-router-dom';
-import UserData from '../plugin/UserData';
+import {
+    Bell, Boxes, ClipboardList, LayoutDashboard, LogOut, Package, PlusCircle,
+    Settings as SettingsIcon, Star, Store, Tag, TrendingUp,
+} from 'lucide-react';
 
+// Admin navigation, in two groups: what the owner touches daily, and the rest.
+// The screens themselves still carry their original markup; src/theme/admin.css gives it the
+// Noore look.
+const DAILY = [
+    { to: '/admin-area/dashboard/', label: 'Dashboard', Icon: LayoutDashboard },
+    { to: '/admin-area/owner/orders/', label: 'Orders', Icon: ClipboardList, hint: 'COD, shipping' },
+    { to: '/admin-area/products/', label: 'Products', Icon: Package },
+    { to: '/admin-area/product/new/', label: 'Add product', Icon: PlusCircle },
+    { to: '/admin-area/owner/reviews/', label: 'Review moderation', Icon: Star },
+];
+
+const MORE = [
+    { to: '/admin-area/coupon/', label: 'Coupons', Icon: Tag },
+    { to: '/admin-area/earning/', label: 'Earnings', Icon: TrendingUp },
+    { to: '/admin-area/orders/', label: 'All orders', Icon: Boxes },
+    { to: '/admin-area/reviews/', label: 'All reviews', Icon: Star },
+    { to: '/admin-area/notifications/', label: 'Notifications', Icon: Bell },
+    { to: '/admin-area/settings/', label: 'Shop settings', Icon: SettingsIcon },
+];
 
 function Sidebar() {
-    const currentPathname = window.location.pathname;
-    const location = useLocation();
-    const isActiveLink = (currentPath, linkPath) => {
-        return currentPath.includes(linkPath);
+    const { pathname } = useLocation();
+
+    const item = ({ to, label, Icon, hint }) => {
+        const active = pathname === to || (to !== '/admin-area/dashboard/' && pathname.startsWith(to));
+        return (
+            <li key={to}>
+                <Link
+                    to={to}
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex items-center gap-3 px-4 py-3 text-xs transition-colors ${active
+                        ? 'bg-ink text-cream'
+                        : 'text-ink hover:bg-sand'}`}
+                >
+                    <Icon className="size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+                    <span className="min-w-0">
+                        {label}
+                        {hint && <span className={`block text-[10px] ${active ? 'text-cream/60' : 'text-stone'}`}>{hint}</span>}
+                    </span>
+                </Link>
+            </li>
+        );
     };
 
-
+    const heading = 'px-4 pb-2 pt-5 text-[10px] uppercase tracking-[0.18em] text-stone';
 
     return (
-        <div className="col-md-3 col-lg-2 sidebar-offcanvas bg-dark navbar-dark" id="sidebar" role="navigation" >
-            <ul className="nav nav-pills flex-column mb-auto nav flex-column pl-1 pt-2">
-                <li className="mb-3">
-                    <Link to="/admin-area/dashboard/" className={isActiveLink(location.pathname, '/admin-area/dashboard/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-speedometer" /> Dashboard{" "}
+        <nav aria-label="Admin" className="w-full shrink-0 border-line bg-cream md:w-60 md:border-r" data-testid="admin-sidebar">
+            <div className="sticky top-0 pb-6">
+                <p className={heading}>Every day</p>
+                <ul className="list-none p-0">{DAILY.map(item)}</ul>
+                <p className={heading}>More</p>
+                <ul className="list-none p-0">{MORE.map(item)}</ul>
+                <div className="mt-6 border-t border-line pt-4">
+                    <Link to="/" className="flex items-center gap-3 px-4 py-2 text-xs text-stone hover:text-ink">
+                        <Store className="size-4" strokeWidth={1.5} aria-hidden="true" /> View the shop
                     </Link>
-                </li>
-                <li className="mb-3">
-                    <Link to="/admin-area/products/" className={isActiveLink(location.pathname, '/admin-area/products/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-grid" /> Products{" "}
+                    <Link to="/logout" className="flex items-center gap-3 px-4 py-2 text-xs text-stone hover:text-ink">
+                        <LogOut className="size-4" strokeWidth={1.5} aria-hidden="true" /> Sign out
                     </Link>
-                </li>
-                <li className="mb-3">
-                    <Link to="/admin-area/orders/" className={isActiveLink(location.pathname, '/admin-area/orders/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-cart-check" /> Orders{" "}
-                    </Link>
-                </li>
-                <li className="mb-3">
-                    <Link to="/admin-area/owner/orders/" className={isActiveLink(location.pathname, '/admin-area/owner/orders/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-box-seam" /> Handle orders (COD, shipping){" "}
-                    </Link>
-                </li>
-                <li className="mb-3">
-                    <Link to="/admin-area/owner/reviews/" className={isActiveLink(location.pathname, '/admin-area/owner/reviews/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-star" /> Review moderation{" "}
-                    </Link>
-                </li>
-                <li className="mb-3">
-                    <Link to="/admin-area/earning/" className={isActiveLink(location.pathname, '/admin-area/earning/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-currency-dollar" /> Earning{" "}
-                    </Link>
-                </li>
-                <li className="mb-3">
-                    <Link to="/admin-area/reviews/" className={isActiveLink(location.pathname, '/admin-area/reviews/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-star" /> Reviews{" "}
-                    </Link>
-                </li>
-                <li className="mb-3">
-                    <Link to="/admin-area/product/new/" className={isActiveLink(location.pathname, '/admin-area/product/new/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-plus-circle" /> Add Product{" "}
-                    </Link>
-                </li>
-                {/* <li className="mb-3">
-                    <a href="faqs.html" className={isActiveLink(location.pathname, '/admin-area/faqs/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-patch-question" /> FAQs{" "}
-                    </a>
-                </li> */}
-                <li className="mb-3">
-                    <Link to={`/admin-area/coupon/`} className={isActiveLink(location.pathname, '/admin-area/coupon/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-tag" /> Coupon &amp; Discount{" "}
-                    </Link>
-                </li>
-                {/* <li className="mb-3">
-                    <a href="customers.html" className={isActiveLink(location.pathname, '/admin-area/customers/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-people" /> Customers{" "}
-                    </a>
-                </li> */}
-                <li className="mb-3">
-                    <Link to={`/admin-area/notifications/`} className={isActiveLink(location.pathname, '/admin-area/notifications/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-bell" /> Notifications{" "}
-                    </Link>
-                </li>
-                {/* <li className="mb-3">
-                    <a href="message.html" className={isActiveLink(location.pathname, '/admin-area/message/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-envelope" /> Message{" "}
-                    </a>
-                </li> */}
-                <li className="mb-3">
-                    <Link to="/admin-area/settings/" className={isActiveLink(location.pathname, '/admin-area/settings/') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-gear-fill" /> Settings{" "}
-                    </Link>
-                </li>
-
-                <li className="mb-3">
-                    <Link to="/logout" className={isActiveLink(location.pathname, '/logout') ? "nav-link text-white active" : "nav-link text-white"}>
-                        {" "}
-                        <i className="bi bi-box-arrow-left" /> Logout{" "}
-                    </Link>
-                </li>
-
-            </ul>
-            <hr />
-        </div >
-    )
+                </div>
+            </div>
+        </nav>
+    );
 }
 
-export default Sidebar
+export default Sidebar;

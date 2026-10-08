@@ -1,286 +1,192 @@
-import React, { useState, useEffect } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import moment from 'moment';
-import Chart from "chart.js/auto";
-import { Pie, Line } from "react-chartjs-2";
+import "chart.js/auto";
+import { Line } from "react-chartjs-2";
 
 import apiInstance from '../../utils/axios';
 import UserData from '../plugin/UserData';
 import Sidebar from './Sidebar';
-import Swal from 'sweetalert2';
-import { formatRupees } from '../../utils/money';
+import { formatINR, formatRupees } from '../../utils/money';
+import { Photo } from '../ui/noore';
 
+// Admin home: the few numbers worth seeing at a glance, what needs attention right now, and
+// the most recent orders and products.
+function StatCard({ label, value, note, to }) {
+    const body = (
+        <>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-stone">{label}</p>
+            <p className="mt-3 font-serif text-4xl leading-none">{value}</p>
+            {note && <p className="mt-2 text-xs text-stone">{note}</p>}
+        </>
+    );
+    return to
+        ? <Link to={to} className="block border border-line bg-white p-5 transition-colors hover:border-line-strong">{body}</Link>
+        : <div className="border border-line bg-white p-5">{body}</div>;
+}
 
+const CHART_LINE = {
+    fill: true,
+    backgroundColor: "rgba(166, 109, 84, 0.12)",
+    borderColor: "#a66d54",
+    pointBackgroundColor: "#a66d54",
+    tension: 0.35,
+};
+
+const CHART_OPTIONS = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { beginAtZero: true, grid: { color: "rgba(41,37,34,0.08)" }, ticks: { font: { size: 10 }, precision: 0 } },
+    },
+};
 
 function Dashboard() {
+    const [stats, setStats] = useState(null)
+    const [products, setProducts] = useState(null)
+    const [orders, setOrders] = useState(null)
+    const [orderChartData, setOrderChartData] = useState(null)
 
-  const [stats, setStats] = useState(null)
-  const [products, setProducts] = useState(null)
-  const [orders, setOrders] = useState(null)
-  const [orderChartData, setOrderChartData] = useState(null)
-  const [productsChartData, setProductsChartData] = useState(null)
-
-
-  const axios = apiInstance
-  const userData = UserData()
-  const navigate = useNavigate()
-
-
-
-  if (userData?.vendor_id !== 0) {
+    const axios = apiInstance
+    const userData = UserData()
 
     useEffect(() => {
-      const fetchData = async () => {
-        try {
-          const response = await axios.get(`vendor/stats/${userData?.vendor_id}/`)
-          setStats(response.data[0]);
-        } catch (error) {
-          console.error('Error fetching data:', error);
-        }
-      };
-
-      fetchData();
+        const vendorId = userData?.vendor_id;
+        if (!vendorId) return;
+        const get = (url, set) => axios.get(url).then((res) => set(res.data)).catch((error) => console.error(url, error));
+        get(`vendor/stats/${vendorId}/`, (data) => setStats(data[0]));
+        get(`vendor/products/${vendorId}/`, setProducts);
+        get('owner/orders/', setOrders);
+        get(`vendor-orders-report-chart/${vendorId}/`, setOrderChartData);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const recentOrders = (orders || []).slice(0, 5);
+    const needsAttention = (orders || []).filter((o) => o.needs_attention);
+    const awaitingCod = (orders || []).filter(
+        (o) => o.payment_method === 'COD' && !o.cod_confirmed_at && o.order_status !== 'Cancelled');
+    const toShip = (orders || []).filter((o) => (o.orderitem || []).some(
+        (item) => ['On Hold', 'Shipping Processing'].includes(item.delivery_status))
+        && ['paid', 'pending'].includes(o.payment_status) && o.order_status !== 'Cancelled');
+    const soldOut = (products || []).filter((p) => p.available_qty === 0);
 
-    useEffect(() => {
-      const fetchData = async () => {
-        try {
-          const response = await axios.get(`vendor/products/${userData?.vendor_id}/`)
-          setProducts(response.data);
-        } catch (error) {
-          console.error('Error fetching data:', error);
-        }
-      };
-
-      fetchData();
-    }, []);
-
-
-    useEffect(() => {
-      const fetchData = async () => {
-        try {
-          const response = await axios.get(`vendor/orders/${userData?.vendor_id}/`)
-          setOrders(response.data);
-        } catch (error) {
-          console.error('Error fetching data:', error);
-        }
-      };
-
-      fetchData();
-    }, []);
-  }
-
-  useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        const order_response = await axios.get(`vendor-orders-report-chart/${userData?.vendor_id}/`);
-        setOrderChartData(order_response.data);
-
-        const product_response = await axios.get(`vendor-products-report-chart/${userData?.vendor_id}/`);
-        setProductsChartData(product_response.data);
-
-      } catch (error) {
-        console.log(error);
-      }
+    const chart = {
+        labels: (orderChartData || []).map((row) => moment(row.month, 'M').format('MMM')),
+        datasets: [{ label: 'Orders', data: (orderChartData || []).map((row) => row.orders), ...CHART_LINE }],
     };
-    fetchChartData();
-  }, [])
 
-  const order_months = orderChartData?.map(item => item.month);
-  const order_counts = orderChartData?.map(item => item.orders);
+    const task = (count, label, to) => count > 0 && (
+        <Link to={to} className="flex items-center justify-between gap-4 border border-line bg-white px-4 py-3 text-sm hover:border-line-strong">
+            <span>{label}</span>
+            <span className="bg-clay px-2 py-1 text-[10px] text-white">{count}</span>
+        </Link>
+    );
 
-  const product_labels = productsChartData?.map(item => item.month);
-  const product_count = productsChartData?.map(item => item.orders);
+    const anyTask = needsAttention.length + awaitingCod.length + toShip.length + soldOut.length > 0;
 
-  const order_data = {
-    labels: order_months,
-    datasets: [
-      {
-        label: "Total Orders",
-        data: order_counts,
-        fill: true,
-        backgroundColor: "rgba(75,192,192,0.2)",
-        borderColor: "rgba(75,192,192,1)"
-      },
+    return (
+        <div className="noore-admin">
+            <div className="flex flex-col md:flex-row">
+                <Sidebar />
+                <main className="min-w-0 flex-1 px-5 py-8 md:px-8" data-testid="admin-dashboard">
+                    <p className="noore-eyebrow mb-2">Admin</p>
+                    <h1 className="mb-8">Your shop today.</h1>
 
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <StatCard label="Products" value={stats?.products ?? '—'}
+                                  note={soldOut.length > 0 ? `${soldOut.length} sold out` : 'all in stock'}
+                                  to="/admin-area/products/" />
+                        <StatCard label="Orders" value={stats?.orders ?? '—'} note="paid and placed" to="/admin-area/owner/orders/" />
+                        <StatCard label="Revenue" value={stats ? formatRupees(stats.revenue || 0) : '—'} note="all time" to="/admin-area/earning/" />
+                        <StatCard label="Needs you" value={needsAttention.length + awaitingCod.length + toShip.length}
+                                  note="orders waiting on an action" to="/admin-area/owner/orders/" />
+                    </div>
 
-    ]
-  }
+                    <section className="mt-10">
+                        <h2 className="mb-4">What needs doing</h2>
+                        {!anyTask && orders !== null &&
+                            <p className="border border-line bg-white px-4 py-6 text-center text-sm text-stone">
+                                Nothing waiting. Every order is handled.
+                            </p>
+                        }
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {task(needsAttention.length, 'Orders flagged for attention', '/admin-area/owner/orders/')}
+                            {task(awaitingCod.length, 'Cash on Delivery orders to confirm', '/admin-area/owner/orders/')}
+                            {task(toShip.length, 'Orders to pack and ship', '/admin-area/owner/orders/')}
+                            {task(soldOut.length, 'Products sold out', '/admin-area/products/')}
+                        </div>
+                    </section>
 
-  const product_data = {
-    labels: product_labels,
-    datasets: [
-      {
-        label: "Total Products",
-        data: product_count,
-        fill: true,
-        backgroundColor: "#ba9ede",
-        borderColor: "#6100e0"
-      },
+                    <section className="mt-10 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+                        <div className="border border-line bg-white p-5">
+                            <h2 className="mb-1">Orders by month</h2>
+                            <p className="mb-4 text-xs text-stone">Paid orders, this year</p>
+                            <div className="h-64">
+                                {orderChartData === null
+                                    ? <p className="pt-20 text-center text-sm text-stone">Loading...</p>
+                                    : <Line data={chart} options={CHART_OPTIONS} />
+                                }
+                            </div>
+                        </div>
 
+                        <div className="border border-line bg-white p-5">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <h2 className="mb-0">Latest orders</h2>
+                                <Link to="/admin-area/owner/orders/" className="text-[10px] uppercase tracking-[0.15em] text-clay">All orders</Link>
+                            </div>
+                            {orders === null && <p className="text-sm text-stone">Loading...</p>}
+                            {orders !== null && recentOrders.length === 0 && <p className="text-sm text-stone">No orders yet.</p>}
+                            <div className="flex flex-col">
+                                {recentOrders.map((order) => (
+                                    <Link to={`/admin-area/owner/orders/${order.oid}/`} key={order.oid}
+                                          className="flex items-center justify-between gap-3 border-b border-line py-3 last:border-0">
+                                        <span className="min-w-0">
+                                            <span className="block truncate text-sm">{order.full_name}</span>
+                                            <span className="block text-[11px] text-stone">
+                                                #{order.oid} · {moment(order.date).format('DD MMM')} · {order.payment_method === 'COD' ? 'COD' : 'Online'}
+                                            </span>
+                                        </span>
+                                        <span className="shrink-0 text-sm">{formatINR(order.total_paise)}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
 
-    ]
-  }
-
-
-
-  return (
-    <div className="container-fluid" id="main" >
-      <div className="row row-offcanvas row-offcanvas-left h-100">
-        <Sidebar />
-        <div className="col-md-9 col-lg-10 main mt-4">
-          <div className="row mb-3 text-white">
-            <div className="col-xl-4 col-lg-6 mb-2">
-              <div className="card card-inverse card-success">
-                <div className="card-block bg-success p-3">
-                  <div className="rotate">
-                    <i className="bi bi-grid fa-5x" />
-                  </div>
-                  <h6 className="text-uppercase">Products</h6>
-                  <h1 className="display-1">{stats?.products || 0}</h1>
-                </div>
-              </div>
+                    <section className="mt-10">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                            <h2 className="mb-0">Recently added</h2>
+                            <Link to="/admin-area/products/" className="text-[10px] uppercase tracking-[0.15em] text-clay">All products</Link>
+                        </div>
+                        {products === null && <p className="text-sm text-stone">Loading...</p>}
+                        {products !== null && products.length === 0 &&
+                            <p className="border border-line bg-white px-4 py-6 text-center text-sm text-stone">
+                                No products yet. <Link to="/admin-area/product/new/" className="noore-link">Add your first candle</Link>.
+                            </p>
+                        }
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {(products || []).slice(0, 4).map((product) => (
+                                <Link to={`/admin-area/product/update/${product.pid}/`} key={product.pid}
+                                      className="border border-line bg-white hover:border-line-strong">
+                                    <div className="aspect-[4/5] bg-oat">
+                                        <Photo src={product.image} alt={product.title} className="size-full object-cover" />
+                                    </div>
+                                    <div className="p-3">
+                                        <p className="truncate text-sm">{product.title}</p>
+                                        <p className="mt-1 text-[11px] text-stone">
+                                            {formatRupees(product.price)} · {product.available_qty > 0 ? `${product.available_qty} in stock` : 'sold out'}
+                                        </p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                </main>
             </div>
-            <div className="col-xl-4 col-lg-6 mb-2">
-              <div className="card card-inverse card-danger">
-                <div className="card-block bg-danger p-3">
-                  <div className="rotate">
-                    <i className="bi bi-cart-check fa-5x" />
-                  </div>
-                  <h6 className="text-uppercase">Orders</h6>
-                  <h1 className="display-1">{stats?.orders || 0}</h1>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-xl-4 col-lg-6 mb-2">
-              <div className="card card-inverse card-warning">
-                <div className="card-block bg-warning p-3">
-                  <div className="rotate">
-                    <i className="bi bi-currency-dollar fa-5x" />
-                  </div>
-                  <h6 className="text-uppercase">Revenue</h6>
-                  <h1 className="display-1">{formatRupees(stats?.revenue || 0)}</h1>
-                </div>
-              </div>
-            </div>
-          </div>
-          {/*/row*/}
-          <hr />
-          <div className="row mb-1 mt-4">
-            <div className="col">
-              <h4>Chart Analytics</h4>
-            </div>
-          </div>
-          <Link className='btn btn-primary me-2'>Daily Report</Link>
-          <Link className='btn btn-primary me-2'>Monthly Report</Link>
-          <Link className='btn btn-primary me-2'>Yearly Report</Link>
-          <div className="row my-2">
-            <div className="col-lg-6 ">
-              <div className="card">
-                <div className="card-body" >
-                  <Line data={order_data} style={{ height: 300, minWidth: "630px" }} />
-                </div>
-              </div>
-            </div>
-            <div className="col-lg-6">
-              <div className="card">
-                <div className="card-body" >
-                  <Line data={product_data} style={{ height: 300, minWidth: "630px" }} />
-                </div>
-              </div>
-            </div>
-          </div>
-          <a id="layouts" />
-          <div className="mb-3 mt-5" style={{ marginBottom: 300 }}>
-            <nav className='mb-5'>
-              <div className="nav nav-tabs" id="nav-tab" role="tablist">
-                <button className="nav-link active" id="nav-home-tab" data-bs-toggle="tab" data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home" aria-selected="true"> <i className='bi bi-grid-fill'></i> Product</button>
-                <button className="nav-link" id="nav-profile-tab" data-bs-toggle="tab" data-bs-target="#nav-profile" type="button" role="tab" aria-controls="nav-profile" aria-selected="false"> <i className='fas fa-shopping-cart'></i> Orders</button>
-              </div>
-            </nav>
-            <div className="tab-content" id="nav-tabContent">
-              <div className="tab-pane fade show active" id="nav-home" role="tabpanel" aria-labelledby="nav-home-tab">
-                <h4>Products</h4>
-                <table className="table">
-                  <thead className="table-dark">
-                    <tr>
-                      <th scope="col">#ID</th>
-                      <th scope="col">Name</th>
-                      <th scope="col">Price</th>
-                      <th scope="col">Quantity</th>
-                      <th scope="col">Orders</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products?.map((p, index) => (
-                      <tr key={index}>
-                        <th scope="row">#{p.sku}</th>
-                        <td>{p.title}</td>
-                        <td>{formatRupees(p.price)}</td>
-                        <td>{p.stock_qty}</td>
-                        <td>{p.order_count}</td>
-                        <td>{p?.status?.toUpperCase()}</td>
-                        <td>
-                          <Link to={`/detail/${p.slug}`} className="btn btn-primary mb-1 me-2"><i className="fas fa-eye" /></Link>
-                          <Link to="" className="btn btn-success mb-1 me-2"><i className="fas fa-edit" /></Link>
-                          <Link to="" className="btn btn-danger mb-1 me-2"><i className="fas fa-trash" /></Link>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {products < 1 &&
-                      <h5 className='mt-4 p-3'>No products yet</h5>
-                    }
-
-
-                  </tbody>
-                </table>
-              </div>
-              <div className="tab-pane fade" id="nav-profile" role="tabpanel" aria-labelledby="nav-profile-tab">
-                <h4>Products</h4>
-                <table className="table">
-                  <thead className="table-dark">
-                    <tr>
-                      <th scope="col">#ID</th>
-                      <th scope="col">Name</th>
-                      <th scope="col">Date</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders?.map((o, index) => (
-                      <tr key={index}>
-                        <th scope="row">#{o.oid}</th>
-                        <td>{o.full_name}</td>
-                        <td>{moment(o.date).format("MM/DD/YYYY")}</td>
-                        <td>{o.order_status}</td>
-                        <td>
-                          <a href="" className="btn btn-primary mb-1">
-                            <i className="fas fa-eye" />
-                          </a>
-
-                        </td>
-                      </tr>
-                    ))}
-
-                    {orders < 1 &&
-                      <h5 className='mt-4 p-3'>No orders yet</h5>
-                    }
-
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
-    </div >
-  )
+    )
 }
 
 export default Dashboard

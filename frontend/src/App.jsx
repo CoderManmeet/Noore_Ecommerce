@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
 import MainWrapper from './layouts/MainWrapper';
@@ -31,35 +31,45 @@ import ClaimAccount from './views/auth/ClaimAccount';
 import Orders from './views/customer/Orders';
 import OrderDetail from './views/customer/OrderDetail';
 
-// Older pages, still in their original Bootstrap styling
-import ForgotPassword from './views/auth/forgotPassword';
-import CreatePassword from './views/auth/createPassword';
-import PaymentSuccess from './views/shop/PaymentSuccess';
-import Invoice from './views/shop/Invoice';
-import Account from './views/customer/Account';
-import Wishlist from './views/customer/Wishlist';
-import Notifications from './views/customer/Notifications';
-import Settings from './views/customer/Settings';
+// Pages a shopper never opens are kept out of the storefront's own download and fetched only
+// when someone actually goes there. The admin area alone (with its rich-text editor) is most of
+// the JavaScript in this project; a shopper should not be waiting for it before seeing a candle.
+const lazyPage = (loader) => lazy(loader);
+
+// Older customer pages, still in their original Bootstrap styling
+const ForgotPassword = lazyPage(() => import('./views/auth/forgotPassword'));
+const CreatePassword = lazyPage(() => import('./views/auth/createPassword'));
+const PaymentSuccess = lazyPage(() => import('./views/shop/PaymentSuccess'));
+const Invoice = lazyPage(() => import('./views/shop/Invoice'));
+const Account = lazyPage(() => import('./views/customer/Account'));
+const Wishlist = lazyPage(() => import('./views/customer/Wishlist'));
+const Notifications = lazyPage(() => import('./views/customer/Notifications'));
+const Settings = lazyPage(() => import('./views/customer/Settings'));
 
 // Admin area (the owner dashboard)
-import Dashboard from './views/vendor/Dashboard';
-import Products from './views/vendor/Products';
-import AddProduct from './views/vendor/AddProduct';
-import UpdateProduct from './views/vendor/UpdateProduct';
-import DashboardOrders from './views/vendor/Orders';
-import DashboardOrderDetail from './views/vendor/OrderDetail';
-import OrderItemDetail from './views/vendor/OrderItemDetail';
-import Earning from './views/vendor/Earning';
-import Reviews from './views/vendor/Reviews';
-import ReviewDetail from './views/vendor/ReviewDetail';
-import Coupon from './views/vendor/Coupon';
-import EditCoupon from './views/vendor/EditCoupon';
-import DashboardNotifications from './views/vendor/Notifications';
-import DashboardSettings from './views/vendor/Settings';
-import OwnerOrders from './views/owner/OwnerOrders';
-import OwnerOrderDetail from './views/owner/OwnerOrderDetail';
-import OwnerReviews from './views/owner/OwnerReviews';
-import ShopNotReady from './views/owner/ShopNotReady';
+const Dashboard = lazyPage(() => import('./views/vendor/Dashboard'));
+const Products = lazyPage(() => import('./views/vendor/Products'));
+const AddProduct = lazyPage(() => import('./views/vendor/AddProduct'));
+const UpdateProduct = lazyPage(() => import('./views/vendor/UpdateProduct'));
+const DashboardOrders = lazyPage(() => import('./views/vendor/Orders'));
+const DashboardOrderDetail = lazyPage(() => import('./views/vendor/OrderDetail'));
+const OrderItemDetail = lazyPage(() => import('./views/vendor/OrderItemDetail'));
+const Earning = lazyPage(() => import('./views/vendor/Earning'));
+const Reviews = lazyPage(() => import('./views/vendor/Reviews'));
+const ReviewDetail = lazyPage(() => import('./views/vendor/ReviewDetail'));
+const Coupon = lazyPage(() => import('./views/vendor/Coupon'));
+const EditCoupon = lazyPage(() => import('./views/vendor/EditCoupon'));
+const DashboardNotifications = lazyPage(() => import('./views/vendor/Notifications'));
+const DashboardSettings = lazyPage(() => import('./views/vendor/Settings'));
+const OwnerOrders = lazyPage(() => import('./views/owner/OwnerOrders'));
+const OwnerOrderDetail = lazyPage(() => import('./views/owner/OwnerOrderDetail'));
+const OwnerReviews = lazyPage(() => import('./views/owner/OwnerReviews'));
+const ShopNotReady = lazyPage(() => import('./views/owner/ShopNotReady'));
+
+// Shown for the moment a lazily-loaded page is being fetched.
+function PageLoading() {
+    return <div className="px-5 py-24 text-center text-sm text-stone" role="status">Loading...</div>;
+}
 
 // The storefront: Noore header and footer around a Noore-styled page.
 function StorefrontLayout() {
@@ -124,9 +134,11 @@ function AdminArea() {
         );
     }
 
+    // `noore-admin` is what src/theme/admin.css hangs off: it gives the dashboard's existing
+    // Bootstrap-style markup (cards, tables, buttons, forms) the Noore look, so the admin area
+    // no longer loads Bootstrap at all.
     return (
-        <div className="noore-shell" data-layout="admin">
-            <LegacyStyles />
+        <div className="noore-shell noore-admin" data-layout="admin">
             <StoreHeader />
             <Outlet />
         </div>
@@ -170,6 +182,7 @@ function App() {
         <CartContext.Provider value={[cartCount, setCartCount]} >
             <BrowserRouter>
                 <MainWrapper>
+                    <Suspense fallback={<PageLoading />}>
                     <Routes>
                         <Route element={<StorefrontLayout />}>
                             <Route path="/" element={<Home />} />
@@ -230,6 +243,7 @@ function App() {
                         <Route path="/vendor/*" element={<OldDashboardAddress />} />
                         <Route path="/owner/*" element={<OldDashboardAddress />} />
                     </Routes>
+                    </Suspense>
                 </MainWrapper>
             </BrowserRouter>
         </CartContext.Provider >

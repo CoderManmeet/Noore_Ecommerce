@@ -1,0 +1,386 @@
+/*
+ * Noore admin area.
+ *
+ * The owner's screens were written with Bootstrap class names (`row`, `col-lg-8`, `card`,
+ * `btn btn-primary`, `table`, `form-control`...). Rather than rewrite seventeen screens, this
+ * file gives those same names a Noore appearance: the cream and ink palette, the serif
+ * headings, square corners, thin rules. Bootstrap itself is no longer loaded in the admin area,
+ * so what you see here is all of it.
+ *
+ * Everything is scoped under `.noore-admin`, which the admin layout puts on its wrapper, so
+ * none of it can reach the storefront. Within that scope these are plain element and class
+ * rules, so a Tailwind utility on an element still wins and screens can be modernised one at a
+ * time without fighting this file.
+ *
+ * Colours and type come from src/theme/noore.css; nothing here invents a value.
+ */
+
+@layer components {
+    .noore-admin {
+        background: var(--color-cream);
+        color: var(--color-ink);
+        font-family: var(--font-sans);
+        font-size: 14px;
+        min-height: 100vh;
+    }
+
+    .noore-admin h1,
+    .noore-admin h2,
+    .noore-admin h3,
+    .noore-admin h4,
+    .noore-admin h5 {
+        font-family: var(--font-serif);
+        font-weight: 400;
+        letter-spacing: -0.01em;
+        margin: 0 0 1rem;
+    }
+
+    .noore-admin h1 { font-size: 2.25rem; }
+    .noore-admin h2 { font-size: 1.75rem; }
+    .noore-admin h3 { font-size: 1.5rem; }
+    .noore-admin h4 { font-size: 1.25rem; }
+    .noore-admin h5 { font-size: 1.1rem; }
+    .noore-admin h6 { font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-stone); margin: 0 0 .5rem; }
+    .noore-admin p { margin: 0 0 .75rem; }
+    .noore-admin a { color: inherit; text-decoration: none; }
+    .noore-admin a:hover { color: var(--color-clay); }
+    .noore-admin hr { border: 0; border-top: 1px solid var(--color-line); margin: 1.5rem 0; }
+
+    /* ---- layout -------------------------------------------------------------------------- */
+    .noore-admin .container,
+    .noore-admin .container-fluid { width: 100%; margin-inline: auto; padding-inline: 1.25rem; }
+    .noore-admin .container { max-width: 1280px; }
+    .noore-admin .row { display: flex; flex-wrap: wrap; margin-inline: -0.5rem; }
+    .noore-admin .row > * { padding-inline: 0.5rem; width: 100%; }
+    /* Every screen is "sidebar, then the page". The old markup asked for a Bootstrap column
+       width (col-md-9, col-lg-10) next to a sidebar that is now a fixed 15rem, which added up
+       to more than the full width and pushed the page below the navigation. The content column
+       simply takes whatever is left instead. */
+    .noore-admin .row-offcanvas { display: flex; flex-wrap: nowrap; align-items: flex-start; margin-inline: 0; gap: 0; }
+    .noore-admin .row-offcanvas > * { padding-inline: 0; }
+    .noore-admin .main { flex: 1 1 0; width: auto; min-width: 0; padding: 2rem 1.5rem; }
+
+    @media (max-width: 767.98px) {
+        .noore-admin .row-offcanvas { flex-wrap: wrap; }
+        .noore-admin .main { padding-inline: 1.25rem; }
+    }
+    .noore-admin .h-100 { height: 100%; }
+    .noore-admin .w-100 { width: 100%; }
+    .noore-admin .w-50 { width: 50%; }
+
+    @media (min-width: 768px) {
+        .noore-admin .col-md-3 { width: 25%; }
+        .noore-admin .col-md-4 { width: 33.3333%; }
+        .noore-admin .col-md-8 { width: 66.6667%; }
+        .noore-admin .col-md-9 { width: 75%; }
+        .noore-admin .col-md-10 { width: 83.3333%; }
+        .noore-admin .col-md-12 { width: 100%; }
+    }
+
+    @media (min-width: 992px) {
+        .noore-admin .col-lg-2 { width: 16.6667%; }
+        .noore-admin .col-lg-3 { width: 25%; }
+        .noore-admin .col-lg-4 { width: 33.3333%; }
+        .noore-admin .col-lg-6 { width: 50%; }
+        .noore-admin .col-lg-8 { width: 66.6667%; }
+        .noore-admin .col-lg-10 { width: 83.3333%; }
+        .noore-admin .col-lg-12 { width: 100%; }
+    }
+
+    @media (min-width: 1200px) {
+        .noore-admin .col-xl-4 { width: 33.3333%; }
+        .noore-admin .col-xl-5 { width: 41.6667%; }
+        .noore-admin .col-xl-6 { width: 50%; }
+        .noore-admin .col-xl-12 { width: 100%; }
+    }
+
+    .noore-admin .d-flex { display: flex; }
+    .noore-admin .flex-column { flex-direction: column; }
+    .noore-admin .flex-wrap { flex-wrap: wrap; }
+    .noore-admin .align-items-center { align-items: center; }
+    .noore-admin .align-items-start { align-items: flex-start; }
+    .noore-admin .align-items-end { align-items: flex-end; }
+    .noore-admin .justify-content-between { justify-content: space-between; }
+    .noore-admin .justify-content-center { justify-content: center; }
+    .noore-admin .justify-content-start { justify-content: flex-start; }
+    .noore-admin .mx-auto { margin-inline: auto; }
+    .noore-admin .me-auto { margin-right: auto; }
+    .noore-admin .mb-auto { margin-bottom: auto; }
+    .noore-admin .text-center { text-align: center; }
+    .noore-admin .text-uppercase { text-transform: uppercase; letter-spacing: .12em; }
+    .noore-admin .fw-bold { font-weight: 700; }
+    .noore-admin .fw-normal { font-weight: 400; }
+    .noore-admin .fw-light { font-weight: 300; }
+    .noore-admin .lead { font-size: 1.05rem; color: var(--color-stone); }
+    .noore-admin .text-muted,
+    .noore-admin .text-secondary { color: var(--color-stone); }
+    .noore-admin .text-dark,
+    .noore-admin .text-reset { color: var(--color-ink); }
+    .noore-admin .text-primary { color: var(--color-clay); }
+    .noore-admin .text-danger { color: var(--color-danger); }
+    .noore-admin .text-white { color: #fff; }
+    .noore-admin .rounded,
+    .noore-admin .rounded-5 { border-radius: 0; }
+    .noore-admin .rounded-circle { border-radius: 9999px; }
+    .noore-admin .img-fluid { max-width: 100%; height: auto; }
+    .noore-admin .overflow-x-auto,
+    .noore-admin .table-responsive { overflow-x: auto; }
+    .noore-admin .shadow,
+    .noore-admin .shadow-1,
+    .noore-admin .shadow-1-strong { box-shadow: none; }
+
+    /* Spacing: Bootstrap's m/p scale, kept so existing markup keeps its rhythm. */
+    .noore-admin .m-3 { margin: 1rem; }
+    .noore-admin .my-2 { margin-block: .5rem; }
+    .noore-admin .mb-0 { margin-bottom: 0; }
+    .noore-admin .mb-1 { margin-bottom: .25rem; }
+    .noore-admin .mb-2 { margin-bottom: .5rem; }
+    .noore-admin .mb-3 { margin-bottom: 1rem; }
+    .noore-admin .mb-4 { margin-bottom: 1.5rem; }
+    .noore-admin .mb-5 { margin-bottom: 3rem; }
+    .noore-admin .mt-0 { margin-top: 0; }
+    .noore-admin .mt-2 { margin-top: .5rem; }
+    .noore-admin .mt-3 { margin-top: 1rem; }
+    .noore-admin .mt-4 { margin-top: 1.5rem; }
+    .noore-admin .mt-5 { margin-top: 3rem; }
+    .noore-admin .me-1 { margin-right: .25rem; }
+    .noore-admin .me-2 { margin-right: .5rem; }
+    .noore-admin .me-3 { margin-right: 1rem; }
+    .noore-admin .ms-2 { margin-left: .5rem; }
+    .noore-admin .mr-2 { margin-right: .5rem; }
+    .noore-admin .pt-0 { padding-top: 0; }
+    .noore-admin .pt-2 { padding-top: .5rem; }
+    .noore-admin .p-1 { padding: .25rem; }
+    .noore-admin .p-3 { padding: 1rem; }
+    .noore-admin .p-4 { padding: 1.5rem; }
+    .noore-admin .px-3 { padding-inline: 1rem; }
+    .noore-admin .px-4 { padding-inline: 1.5rem; }
+    .noore-admin .px-5 { padding-inline: 2rem; }
+    .noore-admin .py-1 { padding-block: .25rem; }
+    .noore-admin .pl-1 { padding-left: .25rem; }
+    .noore-admin .gap-2,
+    .noore-admin .g-2 { gap: .5rem; }
+    .noore-admin .gutters-sm { margin-inline: -0.5rem; }
+    .noore-admin .gutters-sm > * { padding-inline: .5rem; }
+
+    @media (min-width: 992px) {
+        .noore-admin .mb-lg-0 { margin-bottom: 0; }
+        .noore-admin .text-lg-start { text-align: left; }
+        .noore-admin .py-lg-5 { padding-block: 3rem; }
+    }
+
+    @media (min-width: 768px) {
+        .noore-admin .p-md-5 { padding: 2rem; }
+    }
+
+    /* ---- panels -------------------------------------------------------------------------- */
+    .noore-admin .card {
+        background: #fff;
+        border: 1px solid var(--color-line);
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        margin-bottom: 1rem;
+    }
+
+    .noore-admin .card-body,
+    .noore-admin .card-block { padding: 1.25rem; }
+    .noore-admin .card-title { font-family: var(--font-serif); font-size: 1.25rem; }
+    .noore-admin .card-text { color: var(--color-stone); }
+
+    /* The dashboard's old coloured tiles. Flattened to the brand's own surfaces: the numbers
+       are what matter, not the blocks of colour. */
+    .noore-admin .card-inverse,
+    .noore-admin .card-inverse .card-block,
+    .noore-admin .card-inverse .bg-success,
+    .noore-admin .card-inverse .bg-danger,
+    .noore-admin .card-inverse .bg-warning,
+    .noore-admin .card-inverse .bg-primary {
+        background: var(--color-sand);
+        color: var(--color-ink);
+    }
+
+    .noore-admin .card-inverse .display-1 { font-family: var(--font-serif); font-size: 3rem; font-weight: 400; margin: 0; }
+    .noore-admin .card-inverse .rotate { display: none; }
+
+    .noore-admin .bg-white { background: #fff; }
+    .noore-admin .bg-light { background: var(--color-sand); }
+    .noore-admin .bg-dark { background: var(--color-ink); color: var(--color-cream); }
+    .noore-admin .bg-success { background: var(--color-success); color: #fff; }
+    .noore-admin .bg-danger { background: var(--color-danger); color: #fff; }
+    .noore-admin .bg-warning { background: var(--color-clay); color: #fff; }
+    .noore-admin .bg-primary { background: var(--color-ink); color: #fff; }
+
+    .noore-admin .alert { border: 1px solid var(--color-line); background: var(--color-sand); padding: .9rem 1rem; margin-bottom: 1rem; }
+    .noore-admin .alert-danger { border-color: var(--color-danger); color: var(--color-danger); }
+    .noore-admin .alert-info { border-color: var(--color-clay); }
+
+    .noore-admin .badge,
+    .noore-admin .badge-primary {
+        display: inline-block;
+        background: var(--color-ink);
+        color: #fff;
+        padding: .2rem .5rem;
+        font-size: 10px;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        border-radius: 0;
+    }
+
+    .noore-admin .list-group { display: flex; flex-direction: column; border: 1px solid var(--color-line); background: #fff; }
+    .noore-admin .list-group-item { padding: .75rem 1rem; border-bottom: 1px solid var(--color-line); }
+    .noore-admin .list-group-item:last-child { border-bottom: 0; }
+
+    /* ---- tables -------------------------------------------------------------------------- */
+    .noore-admin .table { width: 100%; border-collapse: collapse; background: #fff; }
+    .noore-admin .table th,
+    .noore-admin .table td { padding: .75rem .9rem; border-bottom: 1px solid var(--color-line); text-align: left; vertical-align: middle; }
+
+    .noore-admin .table thead th,
+    .noore-admin .table-dark th {
+        background: var(--color-sand);
+        color: var(--color-ink);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .noore-admin .table tbody tr:hover { background: var(--color-cream); }
+    .noore-admin .align-middle { vertical-align: middle; }
+
+    /* ---- buttons ------------------------------------------------------------------------- */
+    .noore-admin .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+        min-height: 2.5rem;
+        padding: 0 1rem;
+        border: 1px solid transparent;
+        border-radius: 0;
+        background: var(--color-ink);
+        color: #fff;
+        font-size: 10px;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+        transition: background-color .2s, color .2s;
+    }
+
+    .noore-admin .btn:hover { background: var(--color-clay); color: #fff; }
+    .noore-admin .btn:disabled { opacity: .5; }
+    .noore-admin .btn-sm { min-height: 2rem; padding: 0 .7rem; font-size: 9px; }
+    .noore-admin .btn-primary { background: var(--color-ink); }
+    .noore-admin .btn-success { background: var(--color-success); }
+    .noore-admin .btn-warning { background: var(--color-clay); }
+    .noore-admin .btn-danger { background: var(--color-danger); }
+
+    .noore-admin .btn-secondary,
+    .noore-admin .btn-outline-secondary {
+        background: transparent;
+        border-color: var(--color-line-strong);
+        color: var(--color-ink);
+    }
+
+    .noore-admin .btn-outline-danger { background: transparent; border-color: var(--color-danger); color: var(--color-danger); }
+    .noore-admin .btn-secondary:hover,
+    .noore-admin .btn-outline-secondary:hover,
+    .noore-admin .btn-outline-danger:hover { background: var(--color-ink); border-color: var(--color-ink); color: #fff; }
+    .noore-admin .btn-group { display: inline-flex; gap: .25rem; }
+
+    /* Row actions. In a table a wall of coloured squares reads as noise, so the buttons are
+       outlines; only "delete" keeps its colour, and only on hover. */
+    .noore-admin .table .btn {
+        background: transparent;
+        border-color: var(--color-line-strong);
+        color: var(--color-ink);
+        min-height: 2rem;
+        padding: 0 .55rem;
+    }
+
+    .noore-admin .table .btn:hover { background: var(--color-ink); border-color: var(--color-ink); color: #fff; }
+    .noore-admin .table .btn-danger { color: var(--color-danger); border-color: var(--color-line-strong); }
+    .noore-admin .table .btn-danger:hover { background: var(--color-danger); border-color: var(--color-danger); color: #fff; }
+    .noore-admin .btn-close { background: none; border: 0; font-size: 1.25rem; line-height: 1; opacity: .6; }
+    .noore-admin .btn-close::before { content: "\00d7"; }
+
+    /* ---- forms --------------------------------------------------------------------------- */
+    .noore-admin .form-label,
+    .noore-admin .form-check-label { display: block; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-stone); margin-bottom: .35rem; }
+    .noore-admin .form-group { margin-bottom: 1rem; }
+
+    /* Several screens label their fields with a plain <label> rather than .form-label. */
+    .noore-admin label {
+        display: block;
+        font-size: 10px;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        color: var(--color-stone);
+        margin-bottom: .35rem;
+    }
+
+    .noore-admin .form-check label { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--color-ink); }
+
+    .noore-admin .form-control,
+    .noore-admin .form-select,
+    .noore-admin select,
+    .noore-admin textarea,
+    .noore-admin input[type="text"],
+    .noore-admin input[type="email"],
+    .noore-admin input[type="password"],
+    .noore-admin input[type="number"],
+    .noore-admin input[type="tel"],
+    .noore-admin input[type="date"],
+    .noore-admin input[type="file"] {
+        width: 100%;
+        min-height: 2.75rem;
+        padding: .5rem .75rem;
+        border: 1px solid var(--color-line-strong);
+        border-radius: 0;
+        background: #fff;
+        color: var(--color-ink);
+        font: inherit;
+    }
+
+    .noore-admin textarea { min-height: 7rem; }
+    .noore-admin .form-control:focus,
+    .noore-admin .form-select:focus,
+    .noore-admin select:focus,
+    .noore-admin textarea:focus,
+    .noore-admin input:focus { outline: none; border-color: var(--color-clay); }
+    .noore-admin .form-control[readonly],
+    .noore-admin .form-control:disabled { background: var(--color-sand); color: var(--color-stone); }
+    .noore-admin .form-text { font-size: 11px; color: var(--color-stone); }
+    .noore-admin .form-check { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+    .noore-admin .form-check-input { width: auto; min-height: 0; accent-color: var(--color-ink); }
+    .noore-admin .form-check-label { margin-bottom: 0; }
+
+    /* ---- tabs, dropdowns, modals --------------------------------------------------------- */
+    .noore-admin .nav { display: flex; flex-wrap: wrap; gap: .25rem; list-style: none; padding: 0; margin: 0 0 1rem; }
+    .noore-admin .nav-link { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0 1rem; border: 1px solid var(--color-line-strong); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+    .noore-admin .nav-pills .nav-link.active,
+    .noore-admin .nav-tabs .nav-link.active { background: var(--color-ink); color: #fff; border-color: var(--color-ink); }
+    .noore-admin .tab-pane { display: none; }
+    .noore-admin .tab-pane.active.show { display: block; }
+
+    .noore-admin .dropdown { position: relative; }
+    .noore-admin .dropdown-menu { position: absolute; right: 0; z-index: 30; min-width: 12rem; background: #fff; border: 1px solid var(--color-line-strong); padding: .25rem 0; display: none; }
+    .noore-admin .dropdown-menu.show { display: block; }
+    .noore-admin .dropdown-item { display: block; padding: .5rem 1rem; font-size: 13px; }
+    .noore-admin .dropdown-item:hover { background: var(--color-sand); }
+
+    .noore-admin .modal { position: fixed; inset: 0; z-index: 50; display: none; background: rgb(41 37 34 / .45); overflow-y: auto; }
+    .noore-admin .modal.show { display: block; }
+    .noore-admin .modal-dialog { max-width: 32rem; margin: 4rem auto; padding-inline: 1rem; }
+    .noore-admin .modal-lg { max-width: 48rem; }
+    .noore-admin .modal-content { background: var(--color-cream); border: 1px solid var(--color-line-strong); }
+    .noore-admin .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--color-line); }
+    .noore-admin .modal-title { font-family: var(--font-serif); font-size: 1.25rem; margin: 0; }
+    .noore-admin .modal-body { padding: 1.25rem; }
+
+    /* The CKEditor box, so the product form matches everything around it. */
+    .noore-admin .ck.ck-editor__main > .ck-editor__editable { border-color: var(--color-line-strong); border-radius: 0; min-height: 14rem; }
+    .noore-admin .ck.ck-toolbar { border-color: var(--color-line-strong); border-radius: 0; background: var(--color-sand); }
+}
