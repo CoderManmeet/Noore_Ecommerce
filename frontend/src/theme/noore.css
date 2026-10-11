@@ -231,3 +231,36 @@
     outline: 2px solid var(--color-clay);
     outline-offset: 4px;
 }
+
+/*
+ * Loading placeholders (see src/views/ui/noore.jsx).
+ *
+ * A waiting area that keeps the real layout and sweeps slowly reads as "coming", where an empty
+ * area reads as "broken". Unlayered, like the rail rules above, so a utility class can still
+ * override the background colour. Still and plain for anyone who has asked for reduced motion.
+ */
+.noore-shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+.noore-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    transform: translateX(-100%);
+    animation: noore-sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes noore-sweep {
+    to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .noore-shimmer::after {
+        animation: none;
+        opacity: 0.35;
+        transform: none;
+    }
+}

@@ -68,6 +68,56 @@ def test_reviews_do_not_expose_reviewer_email_or_phone(api, product, customer):
 
 
 @pytest.mark.django_db
+def test_review_byline_never_renders_a_stored_email_address(api, product, customer):
+    """
+    A reviewer whose STORED name is an email address (what User.save() used to write for
+    any account created without a name) must still be published under a safe name.
+    """
+    from store.models import REVIEW_APPROVED, Review
+    from userauths.models import Profile
+
+    customer.full_name = customer.email
+    customer.save()
+    profile = Profile.objects.get(user=customer)
+    profile.full_name = customer.email
+    profile.save()
+
+    Review.objects.create(
+        user=customer, product=product, rating=5, review="Lovely", status=REVIEW_APPROVED
+    )
+    body = api.get(f"{API}reviews/{product.id}/").json()
+    text = str(body)
+
+    assert customer.email not in text
+    # Nothing anywhere in the reviewer's own block may look like an address.
+    assert "@" not in str(body[0]["profile"])
+    local_part = customer.email.split("@")[0]
+    byline = body[0]["profile"]["display_name"]
+    assert byline.lower().startswith(local_part.split(".")[0].lower())
+
+
+@pytest.mark.django_db
+def test_review_byline_falls_back_when_nothing_printable_is_stored(api, product, customer):
+    from store.models import REVIEW_APPROVED, Review
+    from userauths.models import Profile
+
+    customer.full_name = "+919876543210"
+    customer.username = "9876543210"
+    customer.save()
+    profile = Profile.objects.get(user=customer)
+    profile.full_name = "9876543210"
+    profile.save()
+
+    Review.objects.create(
+        user=customer, product=product, rating=4, review="Good", status=REVIEW_APPROVED
+    )
+    body = api.get(f"{API}reviews/{product.id}/").json()
+
+    assert "9876543210" not in str(body)
+    assert body[0]["profile"]["display_name"] == "Verified buyer"
+
+
+@pytest.mark.django_db
 def test_checkout_of_guest_order_does_not_expose_credentials(api, make_order, customer):
     order = make_order(buyer=None)
     response = api.get(f"{API}checkout/{order.oid}/")

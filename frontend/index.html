@@ -7,8 +7,21 @@
     <meta name="theme-color" content="#f6f2eb" />
     <title>Noore Candles</title>
     <meta name="description" content="Noore Candles: hand-poured scented candles, made in small batches in India." />
-    <!-- Icon font used by the admin area and a few older account pages. -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+    <!-- Open the connections the first page needs while the HTML is still being read, so the
+         DNS lookup and the TLS handshake are already done when the first request goes out.
+         Worth a few hundred milliseconds on a phone. Change the API address if yours differs. -->
+    <link rel="preconnect" href="https://noore-api.onrender.com" crossorigin />
+    <link rel="dns-prefetch" href="https://noore-api.onrender.com" />
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
+    <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+
+    <!-- Icon font used by the admin area and a few older account pages. The storefront does not
+         need it, so it is fetched without blocking the first paint: the browser loads it as a
+         low-priority file and the onload swaps it in. -->
+    <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+          onload="this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" /></noscript>
   </head>
   <body>
     <div id="root"></div>

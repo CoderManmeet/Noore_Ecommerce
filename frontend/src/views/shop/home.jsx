@@ -1,23 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
-import apiInstance from '../../utils/axios';
 import Addon from '../plugin/Addon';
 import { formatINR } from '../../utils/money';
 import { STORE_NAME } from '../../utils/constants';
-import { Loading, Photo, ProductCard, ProductRail } from '../ui/noore';
+import { Photo, ProductCard, ProductRail, RailSkeleton, WakingNotice } from '../ui/noore';
 import { SIZES } from '../../utils/image';
+import { useCachedApi } from '../../utils/apiCache';
 
 // Home page (Noore design). Every product, price and photo shown here comes from the store's
 // own catalogue; nothing is hard-coded.
 function Home() {
-    const [products, setProducts] = useState(null)
+    // The catalogue was already requested in main.jsx, and the previous visit's answer is
+    // painted straight away while a fresh one is fetched. See utils/apiCache.js.
+    const { data: products, loading, waking, failed } = useCachedApi('products/')
     const addon = Addon()
 
     useEffect(() => {
         document.title = STORE_NAME;
-        apiInstance.get('products/').then((res) => setProducts(res.data)).catch(() => setProducts([]))
     }, [])
 
     const featured = (products || []).filter((product) => product.featured)
@@ -35,7 +36,8 @@ function Home() {
                         <Link to="/shop" className="noore-btn mt-9 w-fit">Explore the collection <ArrowRight className="size-4" aria-hidden="true" /></Link>
                     </div>
                     <div className="relative min-h-[380px] bg-linen md:min-h-[600px]">
-                        {hero?.image && <Photo src={hero.image} alt={hero.title} width={SIZES.hero} className="absolute inset-0 size-full object-cover" />}
+                        {/* The one photo on screen at the start: fetched eagerly and early, never lazily. */}
+                        {hero?.image && <Photo src={hero.image} alt={hero.title} width={SIZES.hero} priority className="absolute inset-0 size-full object-cover" />}
                         {hero &&
                             <Link to={`/detail/${hero.slug}`} className="absolute bottom-8 right-8 bg-cream/90 px-4 py-3 text-right">
                                 <p className="text-[10px] uppercase tracking-[0.25em] text-stone">Featured</p>
@@ -55,15 +57,18 @@ function Home() {
                         </div>
                         <Link to="/shop" className="noore-link hidden text-xs uppercase tracking-[0.15em] md:block">View all candles</Link>
                     </div>
-                    {products === null && <Loading />}
-                    {products !== null && collection.length === 0 && <p className="py-20 text-center font-serif text-2xl">The collection is being prepared.</p>}
+                    {loading && <div className="mt-12"><RailSkeleton /><WakingNotice show={waking} /></div>}
+                    {failed && <p className="py-20 text-center font-serif text-2xl">The collection could not be loaded. Please refresh.</p>}
+                    {!loading && !failed && collection.length === 0 && <p className="py-20 text-center font-serif text-2xl">The collection is being prepared.</p>}
                     {/* One row the shopper swipes through, rather than a grid: the whole
                         collection stays on one screen and the rest is an invitation to scroll. */}
+                    {!loading && collection.length > 0 &&
                     <div className="mt-12" data-testid="home-products">
                         <ProductRail label="The collection">
                             {collection.map((product) => <ProductCard key={product.id} product={product} inRail />)}
                         </ProductRail>
                     </div>
+                    }
                     <Link to="/shop" className="noore-btn-outline mt-10 w-full md:hidden">View all candles</Link>
                 </div>
             </section>

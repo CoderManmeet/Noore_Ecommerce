@@ -60,7 +60,10 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         email_username, mobile = self.email.split('@')
         if self.full_name == "" or self.full_name == None:
-             self.full_name = self.email
+             # Never fall back to the whole email address: this value is copied to
+             # Profile.full_name and used to be printed under public reviews. The local
+             # part is the same thing we store as the username.
+             self.full_name = email_username
         if self.username == "" or self.username == None:
              self.username = email_username
         super(User, self).save(*args, **kwargs)

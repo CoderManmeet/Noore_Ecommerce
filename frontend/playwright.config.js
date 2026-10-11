@@ -37,7 +37,7 @@ const DEPLOYED_URL = (process.env.E2E_BASE_URL || '').replace(/\/$/, '');
 
 export default defineConfig({
     testDir: './e2e',
-    testMatch: DEPLOYED_URL ? 'production.spec.js' : ['storefront.spec.js', 'checkout.spec.js', 'brand.spec.js'],
+    testMatch: DEPLOYED_URL ? 'production.spec.js' : ['storefront.spec.js', 'checkout.spec.js', 'brand.spec.js', 'coldstart.spec.js'],
     timeout: 60_000,
     expect: { timeout: 10_000 },
     fullyParallel: false,

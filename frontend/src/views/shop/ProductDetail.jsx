@@ -308,7 +308,8 @@ function ProductDetail() {
                                         <article key={index}>
                                             <p className="text-clay" aria-label={`${review.rating} out of 5`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</p>
                                             <p className="mt-2 text-sm leading-7">{review.review}</p>
-                                            <p className="mt-2 text-xs text-stone">{review.profile?.full_name || 'Customer'} · verified buyer · {moment(review.date).format("DD MMM YYYY")}</p>
+                                            {/* display_name is sanitised server-side (core/display_name.py): never an email or a phone number. */}
+                                            <p className="mt-2 text-xs text-stone">{review.profile?.display_name || 'Verified buyer'} · verified buyer · {moment(review.date).format("DD MMM YYYY")}</p>
                                         </article>
                                     ))}
                                 </div>

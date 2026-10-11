@@ -9,13 +9,19 @@ import { imageUrl, SIZES } from '../../utils/image';
 
 // A product photo. If the file is missing or fails to load, nothing is drawn (the coloured
 // block behind it remains), never the browser's broken-image icon.
-export function Photo({ src, alt = '', className = '', width = SIZES.card, ...rest }) {
+// `priority` is for the one photo that is already on screen when the page opens (the home page
+// hero). That photo must not be lazy-loaded: lazy-loading it tells the browser to fetch it last,
+// which delays the largest thing the visitor sees. Every other photo stays lazy.
+export function Photo({ src, alt = '', className = '', width = SIZES.card, priority = false, ...rest }) {
     const [failed, setFailed] = useState(false);
     useEffect(() => { setFailed(false); }, [src]);
     if (!src || failed) return null;
     // `width` is the widest this photo is ever drawn; Cloudinary then sends a file that size
     // instead of the original upload. See src/utils/image.js.
-    return <img src={imageUrl(src, width)} alt={alt} className={className} loading="lazy" decoding="async"
+    return <img src={imageUrl(src, width)} alt={alt} className={className}
+                loading={priority ? 'eager' : 'lazy'}
+                fetchpriority={priority ? 'high' : undefined}
+                decoding="async"
                 onError={() => setFailed(true)} {...rest} />;
 }
 
@@ -52,6 +58,52 @@ export function Field({ id, label, value, onChange, type = 'text', autoComplete,
 
 export function Loading({ children = 'Loading...' }) {
     return <div className="px-5 py-24 text-center text-sm text-stone" role="status">{children}</div>;
+}
+
+// ---------------------------------------------------------------------- waiting, by design
+//
+// A blank area reads as a broken page. These stand in for the real cards at the same size and
+// in the same colours, so the layout is already correct when the data lands and nothing jumps.
+
+export function CardSkeleton({ inRail = false }) {
+    return (
+        <div className={`${inRail ? 'w-[72vw] shrink-0 sm:w-[46vw] lg:w-[23rem]' : ''}`} aria-hidden="true">
+            <div className="noore-shimmer aspect-[4/5] bg-oat" />
+            <div className="flex items-start justify-between gap-3 pt-4">
+                <div className="noore-shimmer h-5 w-1/2 bg-oat" />
+                <div className="noore-shimmer h-5 w-16 bg-oat" />
+            </div>
+            <div className="noore-shimmer mt-4 h-11 w-full bg-oat" />
+        </div>
+    );
+}
+
+export function RailSkeleton({ count = 4 }) {
+    return (
+        <div className="-mx-5 flex gap-4 overflow-hidden px-5 md:mx-0 md:px-0" role="status" aria-label="Loading candles">
+            {Array.from({ length: count }, (unused, index) => <CardSkeleton key={index} inRail />)}
+        </div>
+    );
+}
+
+export function GridSkeleton({ count = 8 }) {
+    return (
+        <div className="grid gap-x-4 gap-y-12 sm:grid-cols-2 lg:grid-cols-4" role="status" aria-label="Loading candles">
+            {Array.from({ length: count }, (unused, index) => <CardSkeleton key={index} />)}
+        </div>
+    );
+}
+
+// Shown only when the wait is genuinely long, which on free hosting means the server is being
+// started. It says that plainly: no fake progress bar, no invented estimate.
+export function WakingNotice({ show }) {
+    if (!show) return null;
+    return (
+        <p className="mt-6 text-xs leading-6 text-stone" role="status" data-testid="waking-notice">
+            Starting the shop&rsquo;s server &mdash; the first visit after a quiet spell takes a few seconds.
+            Everything after this is quick.
+        </p>
+    );
 }
 
 // One product on a listing: photo at a fixed 4:5 ratio, name, "From" price, sold-out mark.

@@ -2,6 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from core.display_name import display_name_for_user
 from core.serializers import PublicUserSerializer
 from userauths.models import Profile, User
 
@@ -83,14 +84,32 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class PublicProfileSerializer(serializers.ModelSerializer):
-    """What other shoppers may see about a reviewer."""
+    """
+    What other shoppers may see about a reviewer: a safe name and an avatar, never an
+    email address or a phone number.
+
+    `Profile.full_name` copies `User.full_name`, which `User.save()` fills with the email
+    address when the account was created without a name — that is how a reviewer's Gmail
+    address reached the product page. Both the stored `full_name` and the new
+    `display_name` are rendered through `core.display_name`, which converts an email
+    address to its local part ("manmeet0000@gmail.com" -> "Manmeet0000") and falls back to
+    "Verified buyer" when nothing printable is stored.
+    """
 
     user = PublicUserSerializer(read_only=True)
+    full_name = serializers.SerializerMethodField()
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
-        fields = ('id', 'full_name', 'image', 'user')
+        fields = ('id', 'full_name', 'display_name', 'image', 'user')
         read_only_fields = fields
+
+    def get_full_name(self, obj):
+        return display_name_for_user(obj.user, obj)
+
+    def get_display_name(self, obj):
+        return display_name_for_user(obj.user, obj)
 
 
 class PasswordResetSerializer(serializers.Serializer):

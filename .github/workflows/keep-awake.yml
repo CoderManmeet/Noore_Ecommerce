@@ -1,0 +1,94 @@
+# Keeps the free backend awake, and runs the background jobs while it is there.
+#
+# Render's free plan stops the web service after 15 minutes without a request, and the next
+# visitor waits for Django to boot. A request every ten minutes means that almost never happens.
+# The same request runs "SELECT 1" against the database, which also keeps the free Neon database
+# from scaling down to zero.
+#
+# Two jobs, deliberately separate, because the first one must never be skipped by a problem in
+# the second:
+#
+#   ping   needs nothing configured. It works the moment this file is in the repository.
+#   jobs   runs order emails, Razorpay reconciliation and checkout expiry. It needs the secret
+#          JOBS_RUN_TOKEN (the same value as the JOBS_RUN_TOKEN environment variable on Render).
+#          Without that secret it reports "not configured" and succeeds.
+#
+# Set the API address once, in the repository, under
+# Settings -> Secrets and variables -> Actions -> Variables -> New repository variable:
+#
+#   name:  API_BASE_URL     value:  https://noore-api.onrender.com/api/v1/
+#
+# GitHub also disables scheduled workflows in a repository with no activity for 60 days, and its
+# schedule can run late when GitHub is busy. If the shop must never be slow, add a second,
+# independent pinger: cron-job.org (free) hitting the health address every 5 minutes.
+
+name: keep-awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+# A late run must not pile up behind the previous one.
+concurrency:
+  group: keep-awake
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake the backend
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          set -u
+          BASE="${API_BASE_URL:-https://noore-api.onrender.com/api/v1/}"
+          BASE="${BASE%/}/"
+          echo "Pinging ${BASE}health/"
+          # A sleeping instance takes tens of seconds to answer the first request, and answers
+          # 503 while the database is still waking, so try a few times before giving up.
+          for attempt in 1 2 3 4 5 6; do
+            code=$(curl -s -o /tmp/health.json -w '%{http_code}' --max-time 90 "${BASE}health/" || echo 000)
+            echo "attempt ${attempt}: HTTP ${code}"
+            if [ "${code}" = "200" ]; then
+              cat /tmp/health.json
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "The backend did not answer 200 after six attempts."
+          cat /tmp/health.json || true
+          exit 1
+
+  jobs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: ping
+    steps:
+      - name: Run due background jobs
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          JOBS_RUN_TOKEN: ${{ secrets.JOBS_RUN_TOKEN }}
+        run: |
+          set -u
+          if [ -z "${JOBS_RUN_TOKEN:-}" ]; then
+            echo "JOBS_RUN_TOKEN is not configured; skipping. The backend is awake either way."
+            exit 0
+          fi
+          BASE="${API_BASE_URL:-https://noore-api.onrender.com/api/v1/}"
+          BASE="${BASE%/}/"
+          # The token goes in a header, never in the address, so it stays out of the logs.
+          code=$(curl -s -o /tmp/jobs.json -w '%{http_code}' --max-time 90 \
+                   -X POST "${BASE}jobs/run/" \
+                   -H "X-Jobs-Token: ${JOBS_RUN_TOKEN}" \
+                   -H 'Content-Type: application/json' || echo 000)
+          echo "HTTP ${code}"
+          cat /tmp/jobs.json || true
+          echo
+          if [ "${code}" = "404" ]; then
+            echo "404 means the token did not match the one set on Render (the endpoint hides itself)."
+            exit 1
+          fi
+          [ "${code}" = "200" ]

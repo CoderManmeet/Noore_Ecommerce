@@ -51,7 +51,7 @@ function OwnerReviews() {
                         <div className="card mb-3" key={review.id} data-testid="owner-review">
                             <div className="card-body">
                                 <h6 className="card-title mb-1">{review.product?.title} · {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</h6>
-                                <p className="text-muted mb-2"><small>{review.profile?.full_name || 'Customer'} · {moment(review.date).format('DD MMM YYYY')} · verified buyer</small></p>
+                                <p className="text-muted mb-2"><small>{review.profile?.display_name || 'Verified buyer'} · {moment(review.date).format('DD MMM YYYY')} · verified buyer</small></p>
                                 <p className="card-text">{review.review}</p>
                                 {review.status !== 'APPROVED' &&
                                     <button className="btn btn-success btn-sm me-2" disabled={busyId === review.id} onClick={() => moderate(review.id, 'approve')}>Approve</button>

@@ -1,35 +1,16 @@
-import { React, useEffect, useState } from 'react';
-import apiInstance from '../../utils/axios';
+import { useCachedApi } from '../../utils/apiCache';
 
+// Store-wide settings used all over the storefront: shipping, the free-shipping threshold, tax.
+//
+// This is the same answer for every visitor and never personal, so it goes through the shared
+// cache: the request is already in flight before React renders (started in main.jsx), the last
+// answer is painted immediately on a repeat visit, and a page that mounts this twice makes one
+// request, not two. See src/utils/apiCache.js.
 function Addon() {
-    // Initialize a state variable 'addon' as an empty array.
-    const [addon, setAddon] = useState([])
-
-    // Create an instance of Axios for making HTTP requests.
-    const axios = apiInstance
-
-    // Define an asynchronous function 'fetchData' for making GET requests and handling data.
-    async function fetchData(endpoint, setDataFunction) {
-        try {
-            // Send an HTTP GET request to the provided 'endpoint' using Axios.
-            const response = await axios.get(endpoint);
-
-            // If the request is successful, update the state with the retrieved data.
-            setDataFunction(response.data);
-        } catch (error) {
-            // If an error occurs during the request, log the error to the console.
-            console.log(error);
-        }
-    }
-
-    // Use the 'useEffect' hook to execute code when the component mounts (empty dependency array).
-    useEffect(() => {
-        // Fetch and set the 'addon' data by calling 'fetchData' with the 'addon/' endpoint.
-        fetchData('addon/', setAddon);
-    }, []);
-
-    // Return the 'addon' state, which will be populated with data from the API.
-    return addon;
+    const { data } = useCachedApi('addon/');
+    // Callers check individual fields (`addon?.shipping_flat_paise != null`), so an empty object
+    // while the answer is on its way behaves exactly as the old empty array did.
+    return data || {};
 }
 
 export default Addon;
